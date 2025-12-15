@@ -1,0 +1,351 @@
+<%- include('../layout') %>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5>采购统计分析</h5>
+    </div>
+    <div class="card-body">
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <label for="periodSelect" class="form-label">统计周期</label>
+                <select class="form-select" id="periodSelect">
+                    <option value="month" <%= (typeof period !== 'undefined' && period === 'month') ? 'selected' : '' %>>按月</option>
+                    <option value="quarter" <%= (typeof period !== 'undefined' && period === 'quarter') ? 'selected' : '' %>>按季度</option>
+                    <option value="year" <%= (typeof period !== 'undefined' && period === 'year') ? 'selected' : '' %>>按年</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="supplierFilter" class="form-label">供应商筛选</label>
+                <select class="form-select" id="supplierFilter">
+                    <option value="">所有供应商</option>
+                    <% suppliers.forEach(supplier => { %>
+                    <option value="<%= supplier.id %>" <%= (typeof selectedSupplierId !== 'undefined' && selectedSupplierId && selectedSupplierId == supplier.id) ? 'selected' : '' %>><%= supplier.name %></option>
+                    <% }) %>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="startDate" class="form-label">开始日期</label>
+                <input type="date" class="form-control" id="startDate" value="<%= startDate %>">
+            </div>
+            <div class="col-md-3">
+                <label for="endDate" class="form-label">结束日期</label>
+                <input type="date" class="form-control" id="endDate" value="<%= endDate %>">
+            </div>
+        </div>
+        
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card bg-light text-center">
+                    <div class="card-body">
+                        <h6 class="card-title">采购批次总数</h6>
+                        <h3 class="text-primary"><%= stats.totalBatches %></h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-light text-center">
+                    <div class="card-body">
+                        <h6 class="card-title">采购总金额</h6>
+                        <h3 class="text-info">¥<%= stats.totalAmount.toFixed(2) %></h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-light text-center">
+                    <div class="card-body">
+                        <h6 class="card-title">已支付金额</h6>
+                        <h3 class="text-success">¥<%= stats.paidAmount.toFixed(2) %></h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-light text-center">
+                    <div class="card-body">
+                        <h6 class="card-title">采购总数量</h6>
+                        <h3 class="text-warning"><%= stats.totalQuantity %></h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card bg-light text-center">
+                    <div class="card-body">
+                        <h6 class="card-title">待审批批次</h6>
+                        <h3 class="text-warning"><%= stats.pendingBatches %></h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-light text-center">
+                    <div class="card-body">
+                        <h6 class="card-title">已审批批次</h6>
+                        <h3 class="text-info"><%= stats.approvedBatches %></h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-light text-center">
+                    <div class="card-body">
+                        <h6 class="card-title">已到货批次</h6>
+                        <h3 class="text-primary"><%= stats.deliveredBatches %></h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-light text-center">
+                    <div class="card-body">
+                        <h6 class="card-title">已完成批次</h6>
+                        <h3 class="text-success"><%= stats.completedBatches %></h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">采购趋势图</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="purchaseChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">供应商采购占比</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="supplierChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">采购批次明细</h5>
+                <div class="col-md-4">
+                    <input type="text" class="form-control" id="searchInput" placeholder="搜索批次号或供应商名称...">
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>批次号</th>
+                                <th>供应商</th>
+                                <th>采购日期</th>
+                                <th>配件种类数</th>
+                                <th>总数量</th>
+                                <th>总金额</th>
+                                <th>已支付</th>
+                                <th>状态</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% batches.forEach(batch => { %>
+                            <tr>
+                                <td><a href="/purchases/view/<%= batch.id %>"><%= batch.batch_no %></a></td>
+                                <td><%= batch.supplier_name || '未知供应商' %></td>
+                                <td><%= moment(batch.purchase_date).format('YYYY-MM-DD') %></td>
+                                <td><%= batch.accessory_types_count %></td>
+                                <td><%= batch.total_quantity %></td>
+                                <td>¥<%= parseFloat(batch.total_amount || 0).toFixed(2) %></td>
+                                <td>¥<%= parseFloat(batch.paid_amount || 0).toFixed(2) %></td>
+                                <td>
+                                    <% 
+                                    let statusClass = 'secondary';
+                                    let statusText = batch.status;
+                                    if (batch.status === 'pending') {
+                                        statusClass = 'warning'; statusText = '待审批';
+                                    } else if (batch.status === 'approved') {
+                                        statusClass = 'info'; statusText = '已审批';
+                                    } else if (batch.status === 'delivered') {
+                                        statusClass = 'primary'; statusText = '已到货';
+                                    } else if (batch.status === 'completed') {
+                                        statusClass = 'success'; statusText = '已完成';
+                                    } else if (batch.status === 'cancelled') {
+                                        statusClass = 'danger'; statusText = '已取消';
+                                    }
+                                    %>
+                                    <span class="badge bg-<%= statusClass %>"><%= statusText %></span>
+                                </td>
+                            </tr>
+                            <% }) %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// 图表配置
+const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+        legend: {
+            position: 'top',
+        },
+        tooltip: {
+            callbacks: {
+                label: function(context) {
+                    let label = context.dataset.label || '';
+                    if (label) {
+                        label += ': ';
+                    }
+                    if (context.parsed.y !== null) {
+                        label += new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY' }).format(context.parsed.y);
+                    }
+                    return label;
+                }
+            }
+        }
+    },
+    scales: {
+        y: {
+            beginAtZero: true,
+            ticks: {
+                callback: function(value) {
+                    return '¥' + value.toLocaleString('zh-CN');
+                }
+            }
+        }
+    }
+};
+
+// 采购趋势图
+const purchaseCtx = document.getElementById('purchaseChart').getContext('2d');
+const purchaseChart = new Chart(purchaseCtx, {
+    type: 'bar',
+    data: {
+        labels: <%= JSON.stringify(chartData.map(d => period === 'year' ? d.year : period === 'quarter' ? d.quarter : d.month)) %>,
+        datasets: [
+            {
+                label: '采购金额',
+                data: <%= JSON.stringify(chartData.map(d => d.amount)) %>,
+                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }
+        ]
+    },
+    options: chartOptions
+});
+
+// 供应商采购占比图
+const supplierCtx = document.getElementById('supplierChart').getContext('2d');
+const supplierChart = new Chart(supplierCtx, {
+    type: 'doughnut',
+    data: {
+        labels: <%= JSON.stringify(supplierChartData.map(d => d.name)) %>,
+        datasets: [{
+            data: <%= JSON.stringify(supplierChartData.map(d => d.amount)) %>,
+            backgroundColor: [
+                'rgba(255, 99, 132, 0.6)',
+                'rgba(54, 162, 235, 0.6)',
+                'rgba(255, 206, 86, 0.6)',
+                'rgba(75, 192, 192, 0.6)',
+                'rgba(153, 102, 255, 0.6)',
+                'rgba(255, 159, 64, 0.6)',
+                'rgba(201, 203, 207, 0.6)',
+                'rgba(255, 99, 255, 0.6)',
+                'rgba(99, 255, 132, 0.6)',
+                'rgba(132, 99, 255, 0.6)'
+            ],
+            borderColor: [
+                'rgba(255, 99, 132, 1)',
+                'rgba(54, 162, 235, 1)',
+                'rgba(255, 206, 86, 1)',
+                'rgba(75, 192, 192, 1)',
+                'rgba(153, 102, 255, 1)',
+                'rgba(255, 159, 64, 1)',
+                'rgba(201, 203, 207, 1)',
+                'rgba(255, 99, 255, 1)',
+                'rgba(99, 255, 132, 1)',
+                'rgba(132, 99, 255, 1)'
+            ],
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'right',
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        let label = context.label || '';
+                        if (label) {
+                            label += ': ';
+                        }
+                        if (context.parsed !== null) {
+                            label += new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY' }).format(context.parsed);
+                        }
+                        return label;
+                    }
+                }
+            }
+        }
+    }
+});
+
+// 筛选功能
+document.getElementById('periodSelect').addEventListener('change', applyFilters);
+document.getElementById('supplierFilter').addEventListener('change', applyFilters);
+document.getElementById('startDate').addEventListener('change', applyFilters);
+document.getElementById('endDate').addEventListener('change', applyFilters);
+
+function applyFilters() {
+    const period = document.getElementById('periodSelect').value;
+    const supplier = document.getElementById('supplierFilter').value;
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    
+    let url = '/purchases/stats?';
+    const params = new URLSearchParams();
+    
+    params.append('period', period);
+    if (supplier) params.append('supplier', supplier);
+    params.append('startDate', startDate);
+    params.append('endDate', endDate);
+    
+    url += params.toString();
+    window.location.href = url;
+}
+
+// 搜索功能
+document.getElementById('searchInput').addEventListener('input', function() {
+    const searchTerm = this.value.toLowerCase();
+    const rows = document.querySelectorAll('tbody tr');
+    
+    rows.forEach(row => {
+        const batchNo = row.cells[0].textContent.toLowerCase();
+        const supplierName = row.cells[1].textContent.toLowerCase();
+        
+        if (batchNo.includes(searchTerm) || supplierName.includes(searchTerm)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+});
+</script>
+
+<%- include('../base-footer') %>

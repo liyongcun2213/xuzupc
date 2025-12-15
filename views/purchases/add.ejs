@@ -1,0 +1,679 @@
+<%- include('../layout') %>
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">新建采购</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="/purchases" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> 返回列表
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">采购信息</h5>
+            </div>
+            <div class="card-body">
+                <form id="purchaseForm" method="POST" action="/purchases/add">
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <label for="batchNo" class="form-label">批次号</label>
+                            <input type="text" class="form-control" id="batchNo" name="batchNo" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="supplierId" class="form-label">供应商</label>
+                            <select class="form-select" id="supplierId" name="supplierId" required>
+                                <option value="">请选择供应商</option>
+                                <% if (typeof suppliers !== 'undefined' && suppliers) { %>
+                                    <% suppliers.forEach(supplier => { %>
+                                        <option value="<%= supplier.id %>"><%= supplier.name %></option>
+                                    <% }) %>
+                                <% } %>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="purchaseDate" class="form-label">采购日期</label>
+                            <input type="date" class="form-control" id="purchaseDate" name="purchaseDate" value="<%= lastAccessoryPurchaseDate ? moment(lastAccessoryPurchaseDate).format('YYYY-MM-DD') : moment().format('YYYY-MM-DD') %>" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="expectedDeliveryDate" class="form-label">预计到货日期</label>
+                            <input type="date" class="form-control" id="expectedDeliveryDate" name="expectedDeliveryDate">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label for="notes" class="form-label">备注</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="2"></textarea>
+                        </div>
+                    </div>
+
+                    <hr>
+                    
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5>采购明细</h5>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button type="button" class="btn btn-outline-primary" onclick="addItemRow('accessory')">
+                                <i class="bi bi-plus-circle"></i> 添加配件
+                            </button>
+                            <button type="button" class="btn btn-outline-info" onclick="addItemRow('device')">
+                                <i class="bi bi-plus-circle"></i> 添加设备
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="table-responsive mb-3">
+                        <table class="table table-bordered" id="itemsTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="5%">类型</th>
+                                    <th width="30%">项目</th>
+                                    <th width="10%">单价</th>
+                                    <th width="10%">数量</th>
+                                    <th width="15%">小计</th>
+                                    <th width="25%">备注</th>
+                                    <th width="5%">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="itemsTableBody">
+                                <!-- 项目行将在这里动态添加 -->
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-active fw-bold">
+                                    <td colspan="4" class="text-end">总计：</td>
+                                    <td id="totalAmount">¥0.00</td>
+                                    <td colspan="2"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <div class="d-flex justify-content-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> 提交采购
+                        </button>
+                        <a href="/purchases" class="btn btn-secondary ms-2">
+                            <i class="bi bi-x-circle"></i> 取消
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 配件选择模态框 -->
+<div class="modal fade" id="accessoryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">选择配件</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <input type="text" class="form-control" id="accessorySearch" placeholder="搜索配件...">
+                </div>
+                <div class="table-responsive" style="max-height: 400px;">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>配件名称</th>
+                                <th>类别</th>
+                                <th>品牌</th>
+                                <th>型号</th>
+                                <th>当前库存</th>
+                                <th>参考价格</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="accessoryTableBody">
+                            <!-- 配件列表将在这里动态加载 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 设备选择模态框 -->
+<div class="modal fade" id="deviceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">选择设备</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <input type="text" class="form-control" id="deviceSearch" placeholder="搜索设备...">
+                </div>
+                <div class="table-responsive" style="max-height: 400px;">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>产品名称</th>
+                                <th>类别</th>
+                                <th>品牌</th>
+                                <th>型号</th>
+                                <th>规格</th>
+                                <th>参考价格</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="deviceTableBody">
+                            <!-- 设备列表将在这里动态加载 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.search-results div:hover {
+    background-color: #f8f9fa;
+}
+</style>
+
+<script>
+let currentRowId = 0;
+let currentItemRow = null;
+
+// 页面加载完成后执行
+document.addEventListener('DOMContentLoaded', function() {
+    // 获取下一个可用的批次号
+    fetch('/api/next-batch-no')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('batchNo').value = data.batchNo;
+            }
+        })
+        .catch(error => {
+            console.error('获取批次号失败:', error);
+            // 如果获取失败，使用默认格式
+            document.getElementById('batchNo').value = 'PO' + moment().format('YYYYMMDD') + '001';
+        });
+    
+    loadAccessories();
+    loadDevices();
+    
+    // 搜索功能
+    document.getElementById('accessorySearch').addEventListener('input', filterAccessories);
+    document.getElementById('deviceSearch').addEventListener('input', filterDevices);
+
+    // 采购日期变化时，默认预计到货日期为采购日期后第3天
+    const purchaseDateInput = document.getElementById('purchaseDate');
+    const expectedDateInput = document.getElementById('expectedDeliveryDate');
+    if (purchaseDateInput && expectedDateInput) {
+        // 初始化时根据默认采购日期设置一次预计到货日期
+        if (purchaseDateInput.value && !expectedDateInput.value) {
+            const initDate = new Date(purchaseDateInput.value);
+            if (!isNaN(initDate.getTime())) {
+                initDate.setDate(initDate.getDate() + 3);
+                expectedDateInput.value = initDate.toISOString().slice(0, 10);
+            }
+        }
+
+        purchaseDateInput.addEventListener('change', function () {
+            const selectedDate = new Date(this.value);
+            if (isNaN(selectedDate.getTime())) {
+                return;
+            }
+            selectedDate.setDate(selectedDate.getDate() + 3);
+            expectedDateInput.value = selectedDate.toISOString().slice(0, 10);
+        });
+    }
+
+    // 初始化已存在的项目行（如果有的话）的 autocomplete
+    initItemRowAutocompletes();
+});
+
+function initItemRowAutocompletes() {
+    document.querySelectorAll('.item-name-input').forEach(input => {
+        attachItemAutocomplete(input);
+    });
+}
+
+function attachItemAutocomplete(input) {
+    const rowId = input.getAttribute('data-row-id');
+    const itemType = input.getAttribute('data-item-type');
+    const resultsContainer = document.getElementById('autocompleteResults_' + rowId);
+    if (!resultsContainer) {
+        return;
+    }
+
+    let debounceTimer;
+
+    input.addEventListener('input', function () {
+        const keyword = this.value.trim();
+
+        clearTimeout(debounceTimer);
+
+        if (keyword.length < 1) {
+            resultsContainer.style.display = 'none';
+            return;
+        }
+
+        debounceTimer = setTimeout(() => {
+            const endpoint = itemType === 'accessory'
+                ? '/api/autocomplete/accessories'
+                : '/api/autocomplete/products';
+
+            fetch(`${endpoint}?q=${encodeURIComponent(keyword)}&limit=10`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.data && data.data.length > 0) {
+                        renderItemAutocompleteResults(rowId, itemType, data.data);
+                    } else {
+                        resultsContainer.style.display = 'none';
+                    }
+                })
+                .catch(err => {
+                    console.error('Autocomplete error:', err);
+                    resultsContainer.style.display = 'none';
+                });
+        }, 300);
+    });
+}
+
+function renderItemAutocompleteResults(rowId, itemType, results) {
+    const resultsContainer = document.getElementById('autocompleteResults_' + rowId);
+    const input = document.querySelector(`input[name="itemName[${rowId}]"]`);
+    if (!resultsContainer || !input) {
+        return;
+    }
+
+    // 把下拉容器挂到 body 下，避免被采购信息/表格区域裁剪
+    if (!resultsContainer._appendedToBody) {
+        document.body.appendChild(resultsContainer);
+        resultsContainer._appendedToBody = true;
+    }
+
+    // 按输入框在页面中的位置定位下拉框
+    const rect = input.getBoundingClientRect();
+    resultsContainer.style.position = 'absolute';
+    resultsContainer.style.top = (window.scrollY + rect.bottom) + 'px';
+    resultsContainer.style.left = (window.scrollX + rect.left) + 'px';
+    resultsContainer.style.width = rect.width + 'px';
+
+    resultsContainer.innerHTML = results.map(item => {
+        const price = itemType === 'accessory'
+            ? (item.unit_price || 0)
+            : (item.purchase_price || 0);
+        return `
+            <button type="button" class="list-group-item list-group-item-action py-2"
+                    data-id="${item.id || ''}"
+                    data-value="${item.value}"
+                    data-price="${price}">
+                ${item.label}
+            </button>
+        `;
+    }).join('');
+
+    resultsContainer.style.display = 'block';
+
+    resultsContainer.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const id = this.getAttribute('data-id') || '';
+            const value = this.getAttribute('data-value') || '';
+            const price = parseFloat(this.getAttribute('data-price') || '0') || 0;
+
+            input.value = value;
+            const hiddenIdInput = document.querySelector(`input[name="itemId[${rowId}]"]`);
+            const priceInput = document.querySelector(`input[name="itemPrice[${rowId}]"]`);
+            if (hiddenIdInput) {
+                hiddenIdInput.value = id;
+            }
+            if (priceInput) {
+                priceInput.value = price.toFixed(2);
+            }
+
+            calculateRowTotal('item_' + rowId);
+            resultsContainer.style.display = 'none';
+        });
+    });
+}
+
+
+// 点击外部关闭所有行的 autocomplete
+document.addEventListener('click', function (e) {
+    const isItemInput = e.target.classList && e.target.classList.contains('item-name-input');
+    const isResult = e.target.closest && e.target.closest('.item-autocomplete-results');
+    if (!isItemInput && !isResult) {
+        document.querySelectorAll('.item-autocomplete-results').forEach(el => {
+            el.style.display = 'none';
+        });
+    }
+});
+
+// 添加项目行
+function addItemRow(type) {
+    const tbody = document.getElementById('itemsTableBody');
+    const rowId = 'item_' + (++currentRowId);
+    
+    const row = document.createElement('tr');
+    row.id = rowId;
+    
+    if (type === 'accessory') {
+        row.innerHTML = `
+            <td>
+                <span class="badge bg-primary">配件</span>
+                <input type="hidden" name="itemType[${currentRowId}]" value="accessory">
+            </td>
+            <td>
+                <div class="input-group position-relative">
+                    <input type="text" class="form-control item-name-input" 
+                           name="itemName[${currentRowId}]" 
+                           placeholder="输入配件名称或点击搜索选择" 
+                           autocomplete="off"
+                           data-row-id="${currentRowId}" 
+                           data-item-type="accessory">
+                    <button type="button" class="btn btn-outline-secondary" onclick="showAccessoryModal('${rowId}')">
+                        <i class="bi bi-search"></i>
+                    </button>
+                    <input type="hidden" name="itemId[${currentRowId}]">
+                    <div id="autocompleteResults_${currentRowId}" 
+                         class="list-group position-absolute w-100 item-autocomplete-results" 
+                         style="top: 100%; left: 0; z-index: 1050; max-height: 300px; overflow-y: auto; display: none;"></div>
+                </div>
+            </td>
+            <td>
+                <input type="number" class="form-control text-end" name="itemPrice[${currentRowId}]" step="0.01" min="0" onchange="calculateRowTotal('${rowId}')">
+            </td>
+            <td>
+                <input type="number" class="form-control text-end" name="itemQuantity[${currentRowId}]" min="1" value="1" onchange="calculateRowTotal('${rowId}')">
+            </td>
+            <td class="text-end">
+                <span id="rowTotal_${currentRowId}">¥0.00</span>
+            </td>
+            <td>
+                <input type="text" class="form-control" name="itemNotes[${currentRowId}]">
+            </td>
+            <td>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeItemRow('${rowId}')">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </td>
+        `;
+    } else {
+        row.innerHTML = `
+            <td>
+                <span class="badge bg-info">设备</span>
+                <input type="hidden" name="itemType[${currentRowId}]" value="device">
+            </td>
+            <td>
+                <div class="input-group position-relative">
+                    <input type="text" class="form-control item-name-input" 
+                           name="itemName[${currentRowId}]" 
+                           placeholder="输入设备名称或点击搜索选择" 
+                           autocomplete="off"
+                           data-row-id="${currentRowId}" 
+                           data-item-type="device">
+                    <button type="button" class="btn btn-outline-secondary" onclick="showDeviceModal('${rowId}')">
+                        <i class="bi bi-search"></i>
+                    </button>
+                    <input type="hidden" name="itemId[${currentRowId}]">
+                    <div id="autocompleteResults_${currentRowId}" 
+                         class="list-group position-absolute w-100 item-autocomplete-results" 
+                         style="top: 100%; left: 0; z-index: 1050; max-height: 300px; overflow-y: auto; display: none;"></div>
+                </div>
+            </td>
+            <td>
+                <input type="number" class="form-control text-end" name="itemPrice[${currentRowId}]" step="0.01" min="0" onchange="calculateRowTotal('${rowId}')">
+            </td>
+            <td>
+                <input type="number" class="form-control text-end" name="itemQuantity[${currentRowId}]" min="1" value="1" onchange="calculateRowTotal('${rowId}')">
+            </td>
+            <td class="text-end">
+                <span id="rowTotal_${currentRowId}">¥0.00</span>
+            </td>
+            <td>
+                <input type="text" class="form-control" name="itemNotes[${currentRowId}]">
+            </td>
+            <td>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeItemRow('${rowId}')">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </td>
+        `;
+    }
+    
+    tbody.appendChild(row);
+
+    const nameInput = row.querySelector('.item-name-input');
+    if (nameInput) {
+        attachItemAutocomplete(nameInput);
+    }
+}
+
+
+// 删除项目行
+function removeItemRow(rowId) {
+    const row = document.getElementById(rowId);
+    row.remove();
+    calculateTotal();
+}
+
+// 计算行小计
+function calculateRowTotal(rowId) {
+    const price = parseFloat(document.querySelector(`input[name="itemPrice[${rowId.replace('item_', '')}]"]`).value) || 0;
+    const quantity = parseInt(document.querySelector(`input[name="itemQuantity[${rowId.replace('item_', '')}]"]`).value) || 0;
+    const total = price * quantity;
+    
+    document.getElementById(`rowTotal_${rowId.replace('item_', '')}`).textContent = `¥${total.toFixed(2)}`;
+    calculateTotal();
+}
+
+// 计算总金额
+function calculateTotal() {
+    let total = 0;
+    document.querySelectorAll('#itemsTableBody tr').forEach(row => {
+        const rowId = row.id.replace('item_', '');
+        const price = parseFloat(document.querySelector(`input[name="itemPrice[${rowId}]"]`).value) || 0;
+        const quantity = parseInt(document.querySelector(`input[name="itemQuantity[${rowId}]"]`).value) || 0;
+        total += price * quantity;
+    });
+    
+    document.getElementById('totalAmount').textContent = `¥${total.toFixed(2)}`;
+}
+
+// 加载配件列表
+function loadAccessories() {
+    fetch('/api/accessories')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const tbody = document.getElementById('accessoryTableBody');
+                tbody.innerHTML = '';
+                
+                data.accessories.forEach(accessory => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${accessory.name}</td>
+                        <td>${accessory.category_name || ''}</td>
+                        <td>${accessory.brand || ''}</td>
+                        <td>${accessory.model || ''}</td>
+                        <td>${accessory.stock_quantity || 0}</td>
+                        <td>¥${(parseFloat(accessory.unit_price) || 0).toFixed(2)}</td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-primary" onclick="selectAccessory(${accessory.id}, '${accessory.name}', ${parseFloat(accessory.unit_price) || 0})">
+                                选择
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error loading accessories:', error);
+        });
+}
+
+// 加载设备列表
+function loadDevices() {
+    fetch('/api/products')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const tbody = document.getElementById('deviceTableBody');
+                tbody.innerHTML = '';
+                
+                data.products.forEach(product => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${product.name}</td>
+                        <td>${product.category_name || ''}</td>
+                        <td>${product.brand || ''}</td>
+                        <td>${product.model || ''}</td>
+                        <td>${product.specifications || ''}</td>
+                        <td>¥${(parseFloat(product.purchase_price) || 0).toFixed(2)}</td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-primary" onclick="selectDevice(${product.id}, '${product.name}', ${parseFloat(product.purchase_price) || 0})">
+                                选择
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error loading devices:', error);
+        });
+}
+
+// 显示配件选择模态框
+function showAccessoryModal(rowId) {
+    currentItemRow = rowId;
+    const modal = new bootstrap.Modal(document.getElementById('accessoryModal'));
+    modal.show();
+}
+
+// 显示设备选择模态框
+function showDeviceModal(rowId) {
+    currentItemRow = rowId;
+    const modal = new bootstrap.Modal(document.getElementById('deviceModal'));
+    modal.show();
+}
+
+// 选择配件
+function selectAccessory(id, name, price) {
+    if (!currentItemRow) return;
+    
+    const rowId = currentItemRow.replace('item_', '');
+    document.querySelector(`input[name="itemId[${rowId}]"]`).value = id;
+    document.querySelector(`input[name="itemName[${rowId}]"]`).value = name;
+    document.querySelector(`input[name="itemPrice[${rowId}]"]`).value = price.toFixed(2);
+    
+    calculateRowTotal(currentItemRow);
+    
+    const modal = bootstrap.Modal.getInstance(document.getElementById('accessoryModal'));
+    modal.hide();
+}
+
+// 选择设备
+function selectDevice(id, name, price) {
+    if (!currentItemRow) return;
+    
+    const rowId = currentItemRow.replace('item_', '');
+    document.querySelector(`input[name="itemId[${rowId}]"]`).value = id;
+    document.querySelector(`input[name="itemName[${rowId}]"]`).value = name;
+    document.querySelector(`input[name="itemPrice[${rowId}]"]`).value = price.toFixed(2);
+    
+    calculateRowTotal(currentItemRow);
+    
+    const modal = bootstrap.Modal.getInstance(document.getElementById('deviceModal'));
+    modal.hide();
+}
+
+
+
+// 过滤配件
+function filterAccessories() {
+    const searchTerm = document.getElementById('accessorySearch').value.toLowerCase();
+    const rows = document.querySelectorAll('#accessoryTableBody tr');
+    
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(searchTerm) ? '' : 'none';
+    });
+}
+
+// 过滤设备
+function filterDevices() {
+    const searchTerm = document.getElementById('deviceSearch').value.toLowerCase();
+    const rows = document.querySelectorAll('#deviceTableBody tr');
+    
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(searchTerm) ? '' : 'none';
+    });
+}
+
+// 表单提交
+document.getElementById('purchaseForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    // 验证表单
+    const items = document.querySelectorAll('#itemsTableBody tr');
+    if (items.length === 0) {
+        alert('请至少添加一个采购项目');
+        return;
+    }
+    
+    // 检查是否选择了供应商
+    const supplierId = document.getElementById('supplierId').value;
+    if (!supplierId) {
+        alert('请选择供应商');
+        return;
+    }
+    
+    // 禁用提交按钮防止重复提交
+    const submitBtn = this.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> 提交中...';
+    
+    // 使用AJAX提交表单（以 application/x-www-form-urlencoded 方式提交，便于服务器解析）
+    const formData = new FormData(this);
+    const formBody = new URLSearchParams();
+    formData.forEach((value, key) => {
+        formBody.append(key, value);
+    });
+
+    fetch(this.action, {
+        method: 'POST',
+        body: formBody
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // 显示成功消息
+            alert(data.message + '，批次ID: ' + data.batchId);
+            // 跳转到采购列表页面
+            window.location.href = '/purchases';
+        } else {
+            // 显示错误消息
+            alert('创建采购失败: ' + data.message);
+            // 重新启用提交按钮
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="bi bi-check-circle"></i> 提交采购';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('提交失败，请稍后再试');
+        // 重新启用提交按钮
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="bi bi-check-circle"></i> 提交采购';
+    });
+});
+</script>

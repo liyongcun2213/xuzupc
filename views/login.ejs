@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 电脑租赁管理系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/fonts/bootstrap-icons.css" rel="stylesheet">
+    <link href="/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background-color: #f3f4f6;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-container {
+            background-color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 20px 45px rgba(15, 23, 42, 0.15);
+            padding: 2.5rem 2.25rem 2rem;
+            width: 100%;
+            max-width: 520px;
+        }
+        .login-header {
+            text-align: center;
+            margin-bottom: 1.75rem;
+        }
+        .login-header h2 {
+            color: #111827;
+            font-weight: 600;
+        }
+        .login-header i {
+            font-size: 2.8rem;
+            color: #0d6efd;
+            margin-bottom: 0.75rem;
+        }
+        .form-control:focus {
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        }
+        .btn-login {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+            padding: 0.75rem;
+            font-weight: 500;
+        }
+        .btn-login:hover {
+            background-color: #0b5ed7;
+            border-color: #0a58ca;
+        }
+        .alert {
+            margin-bottom: 1rem;
+        }
+        .qr-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .qr-image-wrapper {
+            padding: 10px;
+            border-radius: 16px;
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+        }
+        .qr-image-wrapper img {
+            width: 220px;
+            height: 220px;
+        }
+        .tab-pane {
+            padding-top: 0.75rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <i class="bi bi-laptop"></i>
+            <h2>电脑租赁管理系统</h2>
+            <div class="text-muted small mt-1">支持微信扫码登录和账号密码登录</div>
+        </div>
+
+        <% if (error) { %>
+            <div class="alert alert-danger" role="alert">
+                <%= error %>
+            </div>
+        <% } %>
+
+        <ul class="nav nav-tabs mb-3" id="loginTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="wechat-tab" data-bs-toggle="tab" data-bs-target="#wechat-login" type="button" role="tab">
+                    微信扫码登录
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="account-tab" data-bs-toggle="tab" data-bs-target="#account-login" type="button" role="tab">
+                    账号密码登录
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="loginTabContent">
+            <div class="tab-pane fade show active" id="wechat-login" role="tabpanel" aria-labelledby="wechat-tab">
+                <div class="qr-box">
+                    <% if (typeof qrCodeDataUrl !== 'undefined' && qrCodeDataUrl) { %>
+                        <div class="qr-image-wrapper mb-3">
+                            <img src="<%= qrCodeDataUrl %>" alt="微信扫码登录二维码">
+                        </div>
+                        <div class="text-muted small" id="qrStatusText">
+                            请使用微信扫一扫，扫描上方二维码登录。
+                        </div>
+                        <div class="text-muted small mt-1">
+                            首次扫码登录将创建一个访客账号，只能浏览仪表板；
+                            管理员可在“用户管理”中为你分配 财务 / 业务员 / 管理员 权限。
+                        </div>
+                    <% } else { %>
+                        <div class="text-danger small">
+                            登录二维码生成失败，请刷新页面重试或使用账号密码登录。
+                        </div>
+                    <% } %>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="account-login" role="tabpanel" aria-labelledby="account-tab">
+                <form action="/login" method="post" class="mt-2">
+                    <input type="hidden" name="redirect" value="<%= typeof redirect !== 'undefined' ? redirect : '' %>">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">用户名</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-person"></i></span>
+                            <input type="text" class="form-control" id="username" name="username" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">密码</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                        </div>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="remember">
+                        <label class="form-check-label" for="remember">记住我</label>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-login">登录</button>
+                    </div>
+                    <div class="text-center mt-2">
+                        <small class="text-muted">默认账号：admin / 密码：admin123</small>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    (function() {
+        const token = '<%= typeof loginToken !== "undefined" ? loginToken : "" %>';
+        const redirectUrl = '<%= typeof redirect !== "undefined" && redirect ? redirect : "/dashboard" %>';
+
+        if (!token) {
+            return;
+        }
+
+        let stopped = false;
+
+        function checkLoginStatus() {
+            if (stopped) return;
+
+            fetch('/api/login-status?token=' + encodeURIComponent(token), {
+                credentials: 'same-origin'
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (!data || !data.success) {
+                    return;
+                }
+
+                if (data.status === 'ok') {
+                    stopped = true;
+                    window.location.href = redirectUrl;
+                } else if (data.status === 'expired' || data.status === 'not_found') {
+                    stopped = true;
+                    const tip = document.getElementById('qrStatusText');
+                    if (tip) {
+                        tip.textContent = '二维码已过期，请刷新页面重新获取。';
+                        tip.classList.remove('text-muted');
+                        tip.classList.add('text-danger');
+                    }
+                }
+            })
+            .catch(err => {
+                console.error('检查登录状态失败:', err);
+            });
+        }
+
+        setInterval(checkLoginStatus, 2000);
+    })();
+    </script>
+</body>
+</html>

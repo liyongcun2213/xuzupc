@@ -1,0 +1,184 @@
+<%- include('../layout') %>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5>配件库存盘点</h5>
+        <div>
+            <button class="btn btn-success" id="startNewCheckBtn">
+                <i class="bi bi-plus-circle"></i> 开始新盘点
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        <!-- 选择已有盘点记录 -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <h6>已有盘点记录</h6>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>盘点月份</th>
+                                        <th>盘点日期</th>
+                                        <th>状态</th>
+                                        <th>总差异</th>
+                                        <th>总价值差异</th>
+                                        <th>操作人</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% checks.forEach(check => { %>
+                                    <tr>
+                                        <td><%= check.check_month %></td>
+                                        <td><%= moment(check.check_date).format('YYYY-MM-DD') %></td>
+                                        <td>
+                                            <% if (check.status === 'draft') { %>
+                                                <span class="badge bg-secondary">草稿</span>
+                                            <% } else if (check.status === 'completed') { %>
+                                                <span class="badge bg-warning">已完成</span>
+                                            <% } else if (check.status === 'approved') { %>
+                                                <span class="badge bg-success">已批准</span>
+                                            <% } %>
+                                        </td>
+                                        <td class="<%= check.total_discrepancies > 0 ? 'text-danger' : '' %>">
+                                            <%= check.total_discrepancies %>
+                                        </td>
+                                        <td class="<%= check.total_value_difference > 0 ? 'text-danger' : '' %>">
+                                            ¥<%= parseFloat(check.total_value_difference || 0).toFixed(2) %>
+                                        </td>
+                                        <td><%= check.checked_by_name %></td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <a href="/accessories/inventory-check/<%= check.id %>" class="btn btn-outline-primary" title="查看详情">
+                                                    <i class="bi bi-eye"></i>
+                                                </a>
+                                                <% if (check.status === 'draft') { %>
+                                                    <a href="/accessories/inventory-check/edit/<%= check.id %>" class="btn btn-outline-secondary" title="编辑">
+                                                        <i class="bi bi-pencil"></i>
+                                                    </a>
+                                                <% } %>
+                                                <% if (check.status === 'completed' && req.session.user.role === 'admin') { %>
+                                                    <button class="btn btn-outline-success approve-check-btn" data-id="<%= check.id %>" title="批准">
+                                                        <i class="bi bi-check-circle"></i>
+                                                    </button>
+                                                <% } %>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <% }) %>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 开始新盘点模态框 -->
+<div class="modal fade" id="newCheckModal" tabindex="-1" aria-labelledby="newCheckModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="newCheckModalLabel">开始新盘点</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="newCheckForm">
+                    <div class="mb-3">
+                        <label for="checkMonth" class="form-label">盘点月份</label>
+                        <input type="month" class="form-control" id="checkMonth" value="<%= currentMonth %>" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="checkDate" class="form-label">盘点日期</label>
+                        <input type="date" class="form-control" id="checkDate" value="<%= today %>" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="startCheckBtn">开始盘点</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 开始新盘点
+    document.getElementById('startNewCheckBtn').addEventListener('click', function() {
+        const modal = new bootstrap.Modal(document.getElementById('newCheckModal'));
+        modal.show();
+    });
+    
+    // 确认开始盘点
+    document.getElementById('startCheckBtn').addEventListener('click', function() {
+        const checkMonth = document.getElementById('checkMonth').value;
+        const checkDate = document.getElementById('checkDate').value;
+        
+        if (!checkMonth || !checkDate) {
+            alert('请填写完整信息');
+            return;
+        }
+        
+        fetch('/accessories/inventory-check/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                check_month: checkMonth,
+                check_date: checkDate
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.href = `/accessories/inventory-check/edit/${data.check_id}`;
+            } else {
+                alert('开始盘点失败: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('开始盘点失败，请重试');
+        });
+    });
+    
+    // 批准盘点
+    document.querySelectorAll('.approve-check-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const checkId = this.getAttribute('data-id');
+            
+            if (confirm('确定要批准此盘点记录吗？批准后将更新库存数量。')) {
+                fetch('/accessories/inventory-check/approve', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        check_id: checkId
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('盘点已批准');
+                        window.location.reload();
+                    } else {
+                        alert('批准失败: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('批准失败，请重试');
+                });
+            }
+        });
+    });
+});
+</script>

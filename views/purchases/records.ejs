@@ -1,0 +1,480 @@
+<%- include('../layout') %>
+
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <a href="/purchases" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> 返回采购管理
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">筛选条件</h5>
+    </div>
+    <div class="card-body">
+        <form id="filterForm" class="row g-3">
+            <div class="col-md-3 position-relative">
+                <label for="filterBatchNo" class="form-label">配件名称</label>
+                <input type="text" class="form-control" id="filterBatchNo" name="batchNo" placeholder="输入配件名称" autocomplete="off">
+                <div id="autocompleteResults" class="list-group position-absolute w-100" style="top: 100%; left: 0; z-index: 1050; max-height: 300px; overflow-y: auto; display: none;"></div>
+            </div>
+            <div class="col-md-3">
+                <label for="filterSupplier" class="form-label">供应商</label>
+                <select class="form-select" id="filterSupplier" name="supplierId">
+                    <option value="">全部供应商</option>
+                    <% if (typeof suppliers !== 'undefined' && suppliers) { %>
+                        <% suppliers.forEach(supplier => { %>
+                            <option value="<%= supplier.id %>"><%= supplier.name %></option>
+                        <% }) %>
+                    <% } %>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="filterStatus" class="form-label">状态</label>
+                <select class="form-select" id="filterStatus" name="status">
+                    <option value="">全部状态</option>
+                    <option value="pending">待审批</option>
+                    <option value="approved">已审批</option>
+                    <option value="delivered">已到货</option>
+                    <option value="completed">已完成</option>
+                    <option value="cancelled">已取消</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="filterPaymentStatus" class="form-label">付款状态</label>
+                <select class="form-select" id="filterPaymentStatus" name="paymentStatus">
+                    <option value="">全部状态</option>
+                    <option value="unpaid">未付款</option>
+                    <option value="partial">部分付款</option>
+                    <option value="paid">已付款</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="filterDateRange" class="form-label">日期范围</label>
+                <select class="form-select" id="filterDateRange" name="dateRange">
+                    <option value="">全部时间</option>
+                    <option value="today">今天</option>
+                    <option value="week">本周</option>
+                    <option value="month">本月</option>
+                    <option value="quarter">本季度</option>
+                    <option value="year">今年</option>
+                </select>
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search"></i> 搜索
+                </button>
+                <button type="button" class="btn btn-outline-secondary" onclick="resetFilters()">
+                    <i class="bi bi-arrow-clockwise"></i> 重置
+                </button>
+                <button type="button" class="btn btn-outline-success" onclick="exportRecords()">
+                    <i class="bi bi-download"></i> 导出
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="mt-4">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">采购记录列表</h5>
+            <div class="d-flex align-items-center">
+                <span class="me-2">总计金额: <strong id="totalAmount">¥0.00</strong></span>
+                <span>已支付: <strong id="paidAmount">¥0.00</strong></span>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover" id="recordsTable">
+                    <thead class="table-dark">
+                        <tr>
+                            <th width="10%">批次号</th>
+                            <th width="15%">供应商</th>
+                            <th width="10%">采购日期</th>
+                            <th width="12%">总金额</th>
+                            <th width="12%">已支付</th>
+                            <th width="8%">状态</th>
+                            <th width="8%">付款状态</th>
+                            <th width="10%">创建人</th>
+                            <th width="15%">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recordsTableBody">
+                        <% if (typeof batches !== 'undefined' && batches.length > 0) { %>
+                            <% batches.forEach(batch => { %>
+                            <tr>
+                                <td><%= batch.batch_no %></td>
+                                <td><%= batch.supplier_name || '未知供应商' %></td>
+                                <td><%= moment(batch.purchase_date).format('YYYY-MM-DD') %></td>
+                                <td class="text-end">¥<%= parseFloat(batch.total_amount).toFixed(2) %></td>
+                                <td class="text-end">
+                                    ¥<%= parseFloat(batch.paid_amount).toFixed(2) %>
+                                    <% if (parseFloat(batch.paid_amount) > 0 && parseFloat(batch.paid_amount) < parseFloat(batch.total_amount)) { %>
+                                        <small class="text-muted">(<%= (parseFloat(batch.paid_amount) / parseFloat(batch.total_amount) * 100).toFixed(1) %>%)</small>
+                                    <% } %>
+                                </td>
+                                <td>
+                                    <% let statusClass = 'secondary'; %>
+                                    <% let statusText = batch.status; %>
+                                    <% if (batch.status === 'pending') { %>
+                                        <% statusClass = 'warning'; statusText = '待审批'; %>
+                                    <% } else if (batch.status === 'approved') { %>
+                                        <% statusClass = 'info'; statusText = '已审批'; %>
+                                    <% } else if (batch.status === 'delivered') { %>
+                                        <% statusClass = 'primary'; statusText = '已到货'; %>
+                                    <% } else if (batch.status === 'completed') { %>
+                                        <% statusClass = 'success'; statusText = '已完成'; %>
+                                    <% } else if (batch.status === 'cancelled') { %>
+                                        <% statusClass = 'danger'; statusText = '已取消'; %>
+                                    <% } %>
+                                    <span class="badge bg-<%= statusClass %>"><%= statusText %></span>
+                                </td>
+                                <td>
+                                    <% if (parseFloat(batch.paid_amount) <= 0) { %>
+                                        <span class="badge bg-danger">未付款</span>
+                                    <% } else if (parseFloat(batch.paid_amount) >= parseFloat(batch.total_amount)) { %>
+                                        <span class="badge bg-success">已付款</span>
+                                    <% } else { %>
+                                        <span class="badge bg-warning">部分付款</span>
+                                    <% } %>
+                                </td>
+                                <td><%= batch.created_by_name || '系统' %></td>
+                                <td>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <a href="/purchases/view/<%= batch.id %>" class="btn btn-outline-primary">
+                                            <i class="bi bi-eye"></i> 查看
+                                        </a>
+                                        <% if (batch.status === 'pending' && (user.role === 'admin' || user.role === 'finance')) { %>
+                                            <button type="button" class="btn btn-outline-success" onclick="approvePurchase(<%= batch.id %>)">
+                                                <i class="bi bi-check-circle"></i> 审批
+                                            </button>
+                                        <% } %>
+                                        <% if (batch.status === 'approved' && (parseFloat(batch.total_amount) > parseFloat(batch.paid_amount)) && (user.role === 'admin' || user.role === 'finance')) { %>
+                                            <button type="button" class="btn btn-outline-info" onclick="showPaymentModal(<%= batch.id %>, <%= parseFloat(batch.total_amount) - parseFloat(batch.paid_amount) %>)">
+                                                <i class="bi bi-credit-card"></i> 付款
+                                            </button>
+                                        <% } %>
+                                        <% if (batch.status === 'pending' && (user.role === 'admin' || user.role === 'finance')) { %>
+                                            <button type="button" class="btn btn-outline-danger" onclick="deletePurchase(<%= batch.id %>, '<%= batch.batch_no %>')">
+                                                <i class="bi bi-trash"></i> 删除
+                                            </button>
+                                        <% } %>
+                                    </div>
+                                </td>
+                            </tr>
+                            <% }) %>
+                        <% } else { %>
+                            <tr>
+                                <td colspan="9" class="text-center py-4">暂无符合条件的采购记录</td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- 分页 -->
+            <div class="d-flex justify-content-between align-items-center mt-3">
+                <div>
+                    显示第 <%= startRecord || 0 %> - <%= endRecord || 0 %> 条，共 <%= totalRecords || 0 %> 条记录
+                </div>
+                <nav>
+                    <ul class="pagination mb-0">
+                        <% if (currentPage > 1) { %>
+                            <li class="page-item">
+                                <a class="page-link" href="?page=<%= currentPage - 1 %>">上一页</a>
+                            </li>
+                        <% } %>
+                        
+                        <% for (let i = 1; i <= totalPages; i++) { %>
+                            <% if (i === currentPage) { %>
+                                <li class="page-item active">
+                                    <span class="page-link"><%= i %></span>
+                                </li>
+                            <% } else { %>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=<%= i %>"><%= i %></a>
+                                </li>
+                            <% } %>
+                        <% } %>
+                        
+                        <% if (currentPage < totalPages) { %>
+                            <li class="page-item">
+                                <a class="page-link" href="?page=<%= currentPage + 1 %>">下一页</a>
+                            </li>
+                        <% } %>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 支付模态框 -->
+<div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">支付款项</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="paymentBatchId">
+                <div class="mb-3">
+                    <label for="paymentAmount" class="form-label">支付金额</label>
+                    <div class="input-group">
+                        <span class="input-group-text">¥</span>
+                        <input type="number" class="form-control" id="paymentAmount" step="0.01" min="0">
+                    </div>
+                    <div class="form-text">最大可支付金额: ¥<span id="maxPaymentAmount">0.00</span></div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="paymentAccountCode" class="form-label">支付账户（公账/私账） <span class="text-danger">*</span></label>
+                        <select class="form-select" id="paymentAccountCode">
+                            <option value="public" selected>公司公账</option>
+                            <option value="private">法人私账</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="paymentNotes" class="form-label">支付说明</label>
+                        <textarea class="form-control" id="paymentNotes" rows="3"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="processPayment()">确认支付</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 页面加载完成后执行
+document.addEventListener('DOMContentLoaded', function() {
+    const filterBatchNo = document.getElementById('filterBatchNo');
+    const autocompleteResults = document.getElementById('autocompleteResults');
+    let debounceTimer;
+
+    // Autocomplete 功能
+    filterBatchNo.addEventListener('input', function() {
+        const keyword = this.value.trim();
+        
+        clearTimeout(debounceTimer);
+        
+        if (keyword.length < 1) {
+            autocompleteResults.style.display = 'none';
+            return;
+        }
+        
+        debounceTimer = setTimeout(() => {
+            fetch(`/api/autocomplete/accessories?q=${encodeURIComponent(keyword)}&limit=10`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.data.length > 0) {
+                        renderAutocomplete(data.data);
+                    } else {
+                        autocompleteResults.style.display = 'none';
+                    }
+                })
+                .catch(err => {
+                    console.error('Autocomplete error:', err);
+                    autocompleteResults.style.display = 'none';
+                });
+        }, 300);
+    });
+
+    function renderAutocomplete(results) {
+        autocompleteResults.innerHTML = results.map(item => 
+            `<button type="button" class="list-group-item list-group-item-action py-2" data-value="${item.value}">
+                ${item.label}
+            </button>`
+        ).join('');
+        
+        autocompleteResults.style.display = 'block';
+        
+        // 点击选项
+        autocompleteResults.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', function() {
+                filterBatchNo.value = this.dataset.value;
+                autocompleteResults.style.display = 'none';
+            });
+        });
+    }
+
+    // 点击外部关闭 autocomplete
+    document.addEventListener('click', function(e) {
+        if (!filterBatchNo.contains(e.target) && !autocompleteResults.contains(e.target)) {
+            autocompleteResults.style.display = 'none';
+        }
+    });
+
+    filterBatchNo.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            autocompleteResults.style.display = 'none';
+        }
+    });
+
+    calculateSummary();
+    
+    // 表单提交事件
+    document.getElementById('filterForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        autocompleteResults.style.display = 'none';
+        
+        // 获取筛选条件
+        const formData = new FormData(this);
+        const params = new URLSearchParams();
+        
+        for (const [key, value] of formData.entries()) {
+            if (value) {
+                params.append(key, value);
+            }
+        }
+        
+        // 跳转到筛选后的页面
+        window.location.href = `/purchases/records?${params.toString()}`;
+    });
+});
+
+// 重置筛选条件
+function resetFilters() {
+    document.getElementById('filterForm').reset();
+    window.location.href = '/purchases/records';
+}
+
+// 导出记录
+function exportRecords() {
+    // 获取当前的筛选条件
+    const params = new URLSearchParams(window.location.search);
+    
+    // 跳转到导出接口
+    window.location.href = `/purchases/export?${params.toString()}`;
+}
+
+// 计算汇总金额
+function calculateSummary() {
+    let totalAmount = 0;
+    let paidAmount = 0;
+    
+    document.querySelectorAll('#recordsTableBody tr').forEach(row => {
+        const totalCell = row.cells[3];
+        const paidCell = row.cells[4];
+        
+        if (totalCell && paidCell) {
+            const total = parseFloat(totalCell.textContent.replace('¥', '').replace(/,/g, '')) || 0;
+            const paid = parseFloat(paidCell.textContent.split('¥')[1]?.replace(/,/g, '')) || 0;
+            
+            totalAmount += total;
+            paidAmount += paid;
+        }
+    });
+    
+    document.getElementById('totalAmount').textContent = `¥${totalAmount.toFixed(2)}`;
+    document.getElementById('paidAmount').textContent = `¥${paidAmount.toFixed(2)}`;
+}
+
+// 删除采购
+function deletePurchase(batchId, batchNo) {
+    if (confirm(`确定要删除采购批次 "${batchNo}" 吗？\n\n注意：删除后将无法恢复，请谨慎操作！`)) {
+        if (confirm(`再次确认：您确定要删除采购批次 "${batchNo}" 吗？`)) {
+            fetch('/purchases/delete/' + batchId, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('删除成功！');
+                    location.reload();
+                } else {
+                    alert('删除失败：' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('删除失败，请稍后重试');
+            });
+        }
+    }
+}
+
+// 审批采购
+function approvePurchase(batchId) {
+    if (confirm('确定要审批通过这个采购批次吗？')) {
+        fetch('/purchases/approve/' + batchId, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('审批成功！');
+                location.reload();
+            } else {
+                alert('审批失败：' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('操作失败，请稍后重试');
+        });
+    }
+}
+
+// 显示支付模态框
+function showPaymentModal(batchId, maxAmount) {
+    document.getElementById('paymentBatchId').value = batchId;
+    document.getElementById('paymentAmount').value = maxAmount.toFixed(2);
+    document.getElementById('paymentAmount').max = maxAmount;
+    document.getElementById('maxPaymentAmount').textContent = maxAmount.toFixed(2);
+    
+    const modal = new bootstrap.Modal(document.getElementById('paymentModal'));
+    modal.show();
+}
+
+// 处理支付
+function processPayment() {
+    const batchId = document.getElementById('paymentBatchId').value;
+    const amount = parseFloat(document.getElementById('paymentAmount').value);
+    const notes = document.getElementById('paymentNotes').value;
+    const accountCode = document.getElementById('paymentAccountCode').value;
+    
+    if (isNaN(amount) || amount <= 0) {
+        alert('请输入有效的支付金额');
+        return;
+    }
+    
+    fetch('/purchases/payment/' + batchId, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            amount: amount,
+            notes: notes,
+            finance_account_code: accountCode
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('支付成功！');
+            location.reload();
+        } else {
+            alert('支付失败：' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('操作失败，请稍后重试');
+    });
+}
+</script>

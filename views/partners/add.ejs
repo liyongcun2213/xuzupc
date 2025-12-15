@@ -1,0 +1,132 @@
+<%- include('../layout') %>
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">新增合作伙伴</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="/partners" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> 返回列表
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">新增合作伙伴信息</h5>
+            </div>
+            <div class="card-body">
+                <form id="partnerForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="name" class="form-label">公司名称 *</label>
+                                <input type="text" class="form-control" id="name" name="name" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="contactPerson" class="form-label">联系人</label>
+                                <input type="text" class="form-control" id="contactPerson" name="contactPerson">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="phone" class="form-label">联系电话</label>
+                                <input type="tel" class="form-control" id="phone" name="phone">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="email" class="form-label">电子邮箱</label>
+                                <input type="email" class="form-control" id="email" name="email">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="address" class="form-label">地址</label>
+                        <input type="text" class="form-control" id="address" name="address">
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="commissionRate" class="form-label">佣金比例 (%) *</label>
+                                <input type="number" class="form-control" id="commissionRate" name="commissionRate" 
+                                       min="0" max="100" step="0.01" value="5.00" required>
+                                <small class="text-muted">租赁订单金额的百分比</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="businessLicense" class="form-label">营业执照号</label>
+                                <input type="text" class="form-control" id="businessLicense" name="businessLicense">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="bankAccount" class="form-label">银行账号</label>
+                        <input type="text" class="form-control" id="bankAccount" name="bankAccount">
+                    </div>
+
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> 保存
+                        </button>
+                        <a href="/partners" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> 取消
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 表单提交
+document.getElementById('partnerForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    // 收集表单数据
+    const formData = {
+        name: document.getElementById('name').value,
+        contactPerson: document.getElementById('contactPerson').value,
+        phone: document.getElementById('phone').value,
+        email: document.getElementById('email').value,
+        address: document.getElementById('address').value,
+        commissionRate: document.getElementById('commissionRate').value,
+        businessLicense: document.getElementById('businessLicense').value,
+        bankAccount: document.getElementById('bankAccount').value
+    };
+    
+    // 提交数据
+    fetch('/partners/add', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('合作伙伴创建成功！');
+            window.location.href = '/partners';
+        } else {
+            alert('创建失败：' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('创建失败，请稍后重试');
+    });
+});
+</script>

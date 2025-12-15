@@ -1,0 +1,233 @@
+<%- include('../layout') %>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5>配件库存盘点 - <%= check.check_month %></h5>
+        <div>
+            <button class="btn btn-secondary" id="saveDraftBtn">
+                <i class="bi bi-save"></i> 保存草稿
+            </button>
+            <button class="btn btn-warning" id="completeCheckBtn">
+                <i class="bi bi-check2"></i> 完成盘点
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        <!-- 盘点信息 -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card bg-light">
+                    <div class="card-body text-center">
+                        <h6 class="card-title">盘点日期</h6>
+                        <h5><%= moment(check.check_date).format('YYYY-MM-DD') %></h5>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-light">
+                    <div class="card-body text-center">
+                        <h6 class="card-title">系统库存总数</h6>
+                        <h5 class="text-primary"><%= totalSystemQuantity %></h5>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-light">
+                    <div class="card-body text-center">
+                        <h6 class="card-title">实际库存总数</h6>
+                        <h5 class="text-info"><%= totalActualQuantity %></h5>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-light">
+                    <div class="card-body text-center">
+                        <h6 class="card-title">总差异</h6>
+                        <h5 class="<%= totalDiscrepancies > 0 ? 'text-danger' : 'text-success' %>"><%= totalDiscrepancies %></h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 配件盘点表单 -->
+        <div class="table-responsive mb-4">
+            <table class="table table-bordered" id="checkTable">
+                <thead class="table-light">
+                    <tr>
+                        <th>配件名称</th>
+                        <th>类别</th>
+                        <th>品牌</th>
+                        <th>系统数量</th>
+                        <th>实际数量</th>
+                        <th>差异数量</th>
+                        <th>单价</th>
+                        <th>差异价值</th>
+                        <th>差异原因</th>
+                        <th>处理方式</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% accessories.forEach(accessory => { %>
+                    <tr>
+                        <td><%= accessory.name %></td>
+                        <td><%= accessory.category_name %></td>
+                        <td><%= accessory.brand || '-' %></td>
+                        <td class="system-quantity"><%= accessory.stock_quantity %></td>
+                        <td>
+                            <input type="number" class="form-control actual-quantity" 
+                                   min="0" 
+                                   value="<%= accessory.actual_quantity || accessory.stock_quantity %>"
+                                   data-accessory-id="<%= accessory.id %>">
+                        </td>
+                        <td class="difference">0</td>
+                        <td class="unit-price">¥<%= (accessory.current_price || 0).toFixed(2) %></td>
+                        <td class="difference-value">¥0.00</td>
+                        <td>
+                            <input type="text" class="form-control difference-reason" 
+                                   placeholder="输入差异原因"
+                                   data-accessory-id="<%= accessory.id %>">
+                        </td>
+                        <td>
+                            <select class="form-select action-taken" data-accessory-id="<%= accessory.id %>">
+                                <option value="no_action">无操作</option>
+                                <option value="adjust_system">调整系统</option>
+                                <option value="report_loss">报告损失</option>
+                                <option value="other">其他</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <% }) %>
+                </tbody>
+                <tfoot class="table-light fw-bold">
+                    <tr>
+                        <td colspan="3">总计</td>
+                        <td id="totalSystemQuantity"><%= totalSystemQuantity %></td>
+                        <td id="totalActualQuantity"><%= totalActualQuantity %></td>
+                        <td id="totalDiscrepancies"><%= totalDiscrepancies %></td>
+                        <td>-</td>
+                        <td id="totalDifferenceValue">¥0.00</td>
+                        <td colspan="2">-</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <!-- 盘点备注 -->
+        <div class="mb-3">
+            <label for="checkNotes" class="form-label">盘点备注</label>
+            <textarea class="form-control" id="checkNotes" rows="3" placeholder="输入本次盘点的整体备注信息"><%= check.notes || '' %></textarea>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 计算差异和总价值
+    function calculateTotals() {
+        let totalSystemQuantity = 0;
+        let totalActualQuantity = 0;
+        let totalDiscrepancies = 0;
+        let totalDifferenceValue = 0;
+        
+        document.querySelectorAll('#checkTable tbody tr').forEach(row => {
+            const systemQuantity = parseInt(row.querySelector('.system-quantity').textContent) || 0;
+            const actualQuantity = parseInt(row.querySelector('.actual-quantity').value) || 0;
+            const unitPriceText = row.querySelector('.unit-price').textContent.replace('¥', '');
+            const unitPrice = parseFloat(unitPriceText) || 0;
+            
+            const difference = actualQuantity - systemQuantity;
+            const differenceValue = difference * unitPrice;
+            
+            row.querySelector('.difference').textContent = difference > 0 ? '+' + difference : difference;
+            row.querySelector('.difference-value').textContent = '¥' + Math.abs(differenceValue).toFixed(2);
+            
+            totalSystemQuantity += systemQuantity;
+            totalActualQuantity += actualQuantity;
+            totalDiscrepancies += difference;
+            totalDifferenceValue += differenceValue;
+        });
+        
+        document.getElementById('totalSystemQuantity').textContent = totalSystemQuantity;
+        document.getElementById('totalActualQuantity').textContent = totalActualQuantity;
+        document.getElementById('totalDiscrepancies').textContent = totalDiscrepancies > 0 ? '+' + totalDiscrepancies : totalDiscrepancies;
+        document.getElementById('totalDifferenceValue').textContent = '¥' + Math.abs(totalDifferenceValue).toFixed(2);
+    }
+    
+    // 初始计算
+    calculateTotals();
+    
+    // 监听实际数量变化
+    document.querySelectorAll('.actual-quantity').forEach(input => {
+        input.addEventListener('input', calculateTotals);
+    });
+    
+    // 保存草稿
+    document.getElementById('saveDraftBtn').addEventListener('click', function() {
+        saveCheck('draft');
+    });
+    
+    // 完成盘点
+    document.getElementById('completeCheckBtn').addEventListener('click', function() {
+        if (confirm('确定完成盘点吗？完成后将不能再编辑盘点明细。')) {
+            saveCheck('completed');
+        }
+    });
+    
+    // 保存盘点数据
+    function saveCheck(status) {
+        const details = [];
+        
+        document.querySelectorAll('#checkTable tbody tr').forEach(row => {
+            const accessoryId = row.querySelector('.actual-quantity').getAttribute('data-accessory-id');
+            const actualQuantity = parseInt(row.querySelector('.actual-quantity').value) || 0;
+            const systemQuantity = parseInt(row.querySelector('.system-quantity').textContent) || 0;
+            const difference = actualQuantity - systemQuantity;
+            const unitPriceText = row.querySelector('.unit-price').textContent.replace('¥', '');
+            const unitPrice = parseFloat(unitPriceText) || 0;
+            const differenceValue = difference * unitPrice;
+            const reason = row.querySelector('.difference-reason').value.trim();
+            const actionTaken = row.querySelector('.action-taken').value;
+            
+            details.push({
+                accessory_id: accessoryId,
+                system_quantity: systemQuantity,
+                actual_quantity: actualQuantity,
+                difference: difference,
+                unit_price: unitPrice,
+                difference_value: differenceValue,
+                reason: reason,
+                action_taken: actionTaken
+            });
+        });
+        
+        const notes = document.getElementById('checkNotes').value.trim();
+        
+        fetch(`/accessories/inventory-check/save/<%= check.id %>`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                status: status,
+                details: details,
+                notes: notes,
+                total_discrepancies: parseInt(document.getElementById('totalDiscrepancies').textContent.replace('+', '')) || 0,
+                total_value_difference: parseFloat(document.getElementById('totalDifferenceValue').textContent.replace('¥', '')) || 0
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(status === 'draft' ? '草稿保存成功' : '盘点完成');
+                window.location.href = '/accessories/inventory-check';
+            } else {
+                alert('操作失败: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('操作失败，请重试');
+        });
+    }
+});
+</script>

@@ -1,0 +1,21 @@
+<%- include('layout') %>
+
+<div class="card mt-3">
+    <div class="card-header">
+        <h5 class="mb-0">系统设置</h5>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="/settings/external-base-url">
+            <div class="mb-3">
+                <label for="external_base_url" class="form-label">二维码访问基础地址</label>
+                <input type="text" class="form-control" id="external_base_url" name="external_base_url" value="<%= settings.external_base_url || '' %>" placeholder="例如：http://192.168.2.74:3000">
+                <div class="form-text">用于生成设备微信二维码的基础地址，修改后新生成的二维码会使用此地址。</div>
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i> 保存
+            </button>
+        </form>
+    </div>
+</div>
+
+<%- include('base-footer') %>

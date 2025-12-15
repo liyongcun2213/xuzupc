@@ -1,0 +1,575 @@
+<%- include('../base-header') %>
+
+<style>
+    .nav-tabs .nav-link {
+        color: #495057;
+        border: none;
+        border-bottom: 2px solid transparent;
+    }
+    .nav-tabs .nav-link.active {
+        color: #4a6cf7;
+        border-bottom: 2px solid #4a6cf7;
+        background: transparent;
+    }
+    
+    .filter-bar {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+    }
+    
+    .table-hover tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .action-btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+</style>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">基础信息管理</h5>
+    </div>
+    <div class="card-body">
+        <!-- 标签页导航 -->
+        <ul class="nav nav-tabs mb-3" id="basicInfoTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="customers-tab" data-bs-toggle="tab" 
+                        data-bs-target="#customers" type="button" role="tab">
+                    <i class="bi bi-people"></i> 客户管理
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="suppliers-tab" data-bs-toggle="tab" 
+                        data-bs-target="#suppliers" type="button" role="tab">
+                    <i class="bi bi-shop"></i> 供应商管理
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="partners-tab" data-bs-toggle="tab" 
+                        data-bs-target="#partners" type="button" role="tab">
+                    <i class="bi bi-handshake"></i> 合作伙伴管理
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="users-tab" data-bs-toggle="tab" 
+                        data-bs-target="#users" type="button" role="tab">
+                    <i class="bi bi-person-badge"></i> 用户管理
+                </button>
+            </li>
+        </ul>
+
+        <!-- 标签页内容 -->
+        <div class="tab-content" id="basicInfoTabsContent">
+            <!-- 客户管理 -->
+            <div class="tab-pane fade show active" id="customers" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="input-group" style="max-width: 400px;">
+                        <input type="text" class="form-control" id="customerSearch" placeholder="搜索客户名称、联系人...">
+                        <button class="btn btn-outline-secondary" type="button" id="customerSearchBtn">
+                            <i class="bi bi-search"></i> 搜索
+                        </button>
+                    </div>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCustomerModal">
+                        <i class="bi bi-plus-lg"></i> 新增客户
+                    </button>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>客户名称</th>
+                                <th>联系人</th>
+                                <th>联系电话</th>
+                                <th>地址</th>
+                                <th>信用等级</th>
+                                <th>创建时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customersTableBody">
+                            <tr>
+                                <td colspan="7" class="text-center">加载中...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 供应商管理 -->
+            <div class="tab-pane fade" id="suppliers" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="input-group" style="max-width: 400px;">
+                        <input type="text" class="form-control" id="supplierSearch" placeholder="搜索供应商名称、联系人...">
+                        <button class="btn btn-outline-secondary" type="button" id="supplierSearchBtn">
+                            <i class="bi bi-search"></i> 搜索
+                        </button>
+                    </div>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addSupplierModal">
+                        <i class="bi bi-plus-lg"></i> 新增供应商
+                    </button>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>供应商名称</th>
+                                <th>联系人</th>
+                                <th>联系电话</th>
+                                <th>地址</th>
+                                <th>创建时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="suppliersTableBody">
+                            <tr>
+                                <td colspan="6" class="text-center">加载中...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 合作伙伴管理 -->
+            <div class="tab-pane fade" id="partners" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="input-group" style="max-width: 400px;">
+                        <input type="text" class="form-control" id="partnerSearch" placeholder="搜索合作伙伴名称、联系人...">
+                        <button class="btn btn-outline-secondary" type="button" id="partnerSearchBtn">
+                            <i class="bi bi-search"></i> 搜索
+                        </button>
+                    </div>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPartnerModal">
+                        <i class="bi bi-plus-lg"></i> 新增合作伙伴
+                    </button>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>公司名称</th>
+                                <th>联系人</th>
+                                <th>联系电话</th>
+                                <th>佣金比例</th>
+                                <th>状态</th>
+                                <th>创建时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="partnersTableBody">
+                            <tr>
+                                <td colspan="7" class="text-center">加载中...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 用户管理 -->
+            <div class="tab-pane fade" id="users" role="tabpanel">
+                <div class="d-flex justify-content-end mb-3">
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
+                        <i class="bi bi-plus-lg"></i> 新增用户
+                    </button>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>用户名</th>
+                                <th>真实姓名</th>
+                                <th>角色</th>
+                                <th>邮箱</th>
+                                <th>状态</th>
+                                <th>创建时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody">
+                            <tr>
+                                <td colspan="7" class="text-center">加载中...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 模态框区域 -->
+<!-- 新增客户模态框 -->
+<div class="modal fade" id="addCustomerModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">新增客户</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addCustomerForm">
+                    <div class="mb-3">
+                        <label class="form-label">客户名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">联系人 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="contact_person" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">联系电话 <span class="text-danger">*</span></label>
+                        <input type="tel" class="form-control" name="contact_phone" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">地址</label>
+                        <textarea class="form-control" name="address" rows="2"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">信用等级</label>
+                        <select class="form-select" name="credit_rating">
+                            <option value="A">A - 优秀</option>
+                            <option value="B" selected>B - 良好</option>
+                            <option value="C">C - 一般</option>
+                            <option value="D">D - 较差</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">备注</label>
+                        <textarea class="form-control" name="notes" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="submitCustomer()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑客户模态框 -->
+<div class="modal fade" id="editCustomerModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">编辑客户</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editCustomerForm">
+                    <input type="hidden" name="id">
+                    <div class="mb-3">
+                        <label class="form-label">客户名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">联系人 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="contact_person" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">联系电话 <span class="text-danger">*</span></label>
+                        <input type="tel" class="form-control" name="contact_phone" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">地址</label>
+                        <textarea class="form-control" name="address" rows="2"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">信用等级</label>
+                        <select class="form-select" name="credit_rating">
+                            <option value="A">A - 优秀</option>
+                            <option value="B">B - 良好</option>
+                            <option value="C">C - 一般</option>
+                            <option value="D">D - 较差</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">备注</label>
+                        <textarea class="form-control" name="notes" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="updateCustomer()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 新增供应商模态框 -->
+<div class="modal fade" id="addSupplierModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">新增供应商</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addSupplierForm">
+                    <div class="mb-3">
+                        <label class="form-label">供应商名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">联系人 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="contact_person" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">联系电话 <span class="text-danger">*</span></label>
+                        <input type="tel" class="form-control" name="contact_phone" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">地址</label>
+                        <textarea class="form-control" name="address" rows="2"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">备注</label>
+                        <textarea class="form-control" name="notes" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="submitSupplier()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑供应商模态框 -->
+<div class="modal fade" id="editSupplierModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">编辑供应商</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editSupplierForm">
+                    <input type="hidden" name="id">
+                    <div class="mb-3">
+                        <label class="form-label">供应商名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">联系人 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="contact_person" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">联系电话 <span class="text-danger">*</span></label>
+                        <input type="tel" class="form-control" name="contact_phone" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">地址</label>
+                        <textarea class="form-control" name="address" rows="2"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">备注</label>
+                        <textarea class="form-control" name="notes" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="updateSupplier()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 新增合作伙伴模态框 -->
+<div class="modal fade" id="addPartnerModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">新增合作伙伴</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addPartnerForm">
+                    <div class="mb-3">
+                        <label class="form-label">公司名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">联系人 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="contact_person" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">联系电话 <span class="text-danger">*</span></label>
+                        <input type="tel" class="form-control" name="phone" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">佣金比例(%) <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" name="commission_rate" step="0.01" min="0" max="100" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">状态</label>
+                        <select class="form-select" name="status">
+                            <option value="active" selected>活跃</option>
+                            <option value="inactive">非活跃</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">备注</label>
+                        <textarea class="form-control" name="notes" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="submitPartner()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑合作伙伴模态框 -->
+<div class="modal fade" id="editPartnerModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">编辑合作伙伴</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editPartnerForm">
+                    <input type="hidden" name="id">
+                    <div class="mb-3">
+                        <label class="form-label">公司名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">联系人 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="contact_person" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">联系电话 <span class="text-danger">*</span></label>
+                        <input type="tel" class="form-control" name="phone" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">佣金比例(%) <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" name="commission_rate" step="0.01" min="0" max="100" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">状态</label>
+                        <select class="form-select" name="status">
+                            <option value="active">活跃</option>
+                            <option value="inactive">非活跃</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">备注</label>
+                        <textarea class="form-control" name="notes" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="updatePartner()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 新增用户模态框 -->
+<div class="modal fade" id="addUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">新增用户</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addUserForm">
+                    <div class="mb-3">
+                        <label class="form-label">用户名 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">密码 <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" name="password" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">真实姓名 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="real_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">角色 <span class="text-danger">*</span></label>
+                        <select class="form-select" name="role" required>
+                            <option value="">请选择</option>
+                            <option value="admin">管理员</option>
+                            <option value="user">普通用户</option>
+                            <option value="viewer">查看者</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">邮箱</label>
+                        <input type="email" class="form-control" name="email">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="submitUser()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑用户模态框 -->
+<div class="modal fade" id="editUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">编辑用户</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editUserForm">
+                    <input type="hidden" name="id">
+                    <div class="mb-3">
+                        <label class="form-label">用户名</label>
+                        <input type="text" class="form-control" name="username" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">新密码 <small class="text-muted">(留空则不修改)</small></label>
+                        <input type="password" class="form-control" name="password">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">真实姓名 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="real_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">角色 <span class="text-danger">*</span></label>
+                        <select class="form-select" name="role" required>
+                            <option value="admin">管理员</option>
+                            <option value="user">普通用户</option>
+                            <option value="viewer">查看者</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">邮箱</label>
+                        <input type="email" class="form-control" name="email">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="updateUser()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/js/basic-info.js"></script>
+
+<%- include('../base-footer') %>

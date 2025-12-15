@@ -1,0 +1,392 @@
+<%- include('../layout') %>
+
+<div class="card">
+    <div class="card-header">
+        <h5>设备升级 - <%= device.device_code %></h5>
+    </div>
+    <div class="card-body">
+        <!-- 当前设备信息 -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <h6>当前设备信息</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <td><strong>设备编号:</strong></td>
+                                <td><%= device.device_code %></td>
+                            </tr>
+                            <tr>
+                                <td><strong>当前型号:</strong></td>
+                                <td><%= device.product_specifications || device.product_code %></td>
+                            </tr>
+                            <tr>
+                                <td><strong>设备名称:</strong></td>
+                                <td><%= device.device_name %></td>
+                            </tr>
+                            <tr>
+                                <td><strong>当前状态:</strong></td>
+                                <td>
+                                    <% if (device.status === 'in_warehouse') { %>
+                                        <span class="badge bg-success">在仓库</span>
+                                    <% } else if (device.status === 'available') { %>
+                                        <span class="badge bg-primary">可用</span>
+                                    <% } else if (device.status === 'rented') { %>
+                                        <span class="badge bg-warning">已租出</span>
+                                    <% } else if (device.status === 'maintenance') { %>
+                                        <span class="badge bg-info">维护中</span>
+                                    <% } else if (device.status === 'retired') { %>
+                                        <span class="badge bg-danger">退役/报废</span>
+                                    <% } %>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <h6>当前配件</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>配件类别</th>
+                                        <th>配件名称</th>
+                                        <th>品牌型号</th>
+                                        <th>数量</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% if (typeof currentAccessories !== 'undefined' && currentAccessories && currentAccessories.length > 0) { %>
+                                        <% currentAccessories.forEach(accessory => { %>
+                                        <tr>
+                                            <td><%= accessory.category_name %></td>
+                                            <td><%= accessory.accessory_name %></td>
+                                            <td><%= accessory.brand %> <%= accessory.model %></td>
+                                            <td><%= accessory.quantity %></td>
+                                        </tr>
+                                        <% }) %>
+                                    <% } else { %>
+                                        <tr>
+                                            <td colspan="4" class="text-center">暂无配件信息</td>
+                                        </tr>
+                                    <% } %>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 升级表单 -->
+        <form id="upgradeForm">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="newProductSelect" class="form-label">新产品型号</label>
+                        <select class="form-select" id="newProductSelect" required>
+                            <option value="">请选择新产品型号...</option>
+                            <% if (typeof products !== 'undefined' && products) { %>
+                                <% products.forEach(product => { %>
+                                <option value="<%= product.product_code %>" <%= product.product_code === device.product_code ? 'selected' : '' %>>
+                                    <%= (product.product_code ? (product.product_code + '-' + product.name) : product.name) %>
+                                </option>
+                                <% }) %>
+                            <% } %>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="upgradeTypeSelect" class="form-label">升级类型</label>
+                        <select class="form-select" id="upgradeTypeSelect" required>
+                            <option value="">请选择升级类型...</option>
+                            <option value="component_add">添加配件</option>
+                            <option value="component_replace">更换配件</option>
+                            <option value="component_remove">移除配件</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 配件选择区域 -->
+            <div id="accessoriesSection" style="display: none;">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3" id="oldAccessorySection" style="display: none;">
+                            <label for="oldAccessorySelect" class="form-label">当前配件</label>
+                            <select class="form-select" id="oldAccessorySelect">
+                                <option value="">请选择当前配件...</option>
+                                <% if (typeof currentAccessories !== 'undefined' && currentAccessories) { %>
+                                    <% currentAccessories.forEach(accessory => { %>
+                                    <option value="<%= accessory.accessory_id %>" 
+                                            data-name="<%= accessory.accessory_name %>">
+                                        <%= accessory.category_name %> - <%= accessory.accessory_name %> 
+                                        (<%= accessory.brand %> <%= accessory.model %>)
+                                    </option>
+                                    <% }) %>
+                                <% } %>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3" id="newAccessorySection" style="display: none;">
+                            <label for="newAccessorySelect" class="form-label">新配件</label>
+                            <select class="form-select" id="newAccessorySelect">
+                                <option value="">请选择新配件...</option>
+                                <% if (typeof availableAccessories !== 'undefined' && availableAccessories) { %>
+                                    <% availableAccessories.forEach(accessory => { %>
+                                    <option value="<%= accessory.id %>" 
+                                            data-name="<%= accessory.name %>"
+                                            data-category="<%= accessory.category_name %>"
+                                            data-stock="<%= accessory.stock_quantity %>">
+                                        <%= accessory.category_name %> - <%= accessory.name %> 
+                                        (<%= accessory.brand %> <%= accessory.model %>, 
+                                        库存: <%= accessory.stock_quantity %>)
+                                    </option>
+                                    <% }) %>
+                                <% } %>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="descriptionInput" class="form-label">升级描述</label>
+                    <textarea class="form-control" id="descriptionInput" rows="3" 
+                              placeholder="请描述本次升级的详细信息..."></textarea>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary" id="upgradeBtn" disabled>
+                    <i class="bi bi-arrow-up-circle"></i> 执行升级
+                </button>
+                <a href="/devices/view/<%= device.device_code %>" class="btn btn-secondary">
+                    <i class="bi bi-eye"></i> 查看设备
+                </a>
+                <a href="/devices" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> 返回列表
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 升级结果模态框 -->
+<div class="modal fade" id="resultModal" tabindex="-1" aria-labelledby="resultModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="resultModalLabel">升级结果</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="resultContent"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="viewDeviceBtn">查看设备</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const deviceCode = '<%= device.device_code %>';
+    
+    // 升级类型变化时显示相应的控件
+    document.getElementById('upgradeTypeSelect').addEventListener('change', function() {
+        const upgradeType = this.value;
+        const accessoriesSection = document.getElementById('accessoriesSection');
+        const oldAccessorySection = document.getElementById('oldAccessorySection');
+        const newAccessorySection = document.getElementById('newAccessorySection');
+        
+        // 隐藏所有配件选择区域
+        oldAccessorySection.style.display = 'none';
+        newAccessorySection.style.display = 'none';
+        
+        // 根据升级类型显示相应区域
+        if (upgradeType) {
+            accessoriesSection.style.display = 'block';
+            
+            if (upgradeType === 'component_replace' || upgradeType === 'component_remove') {
+                oldAccessorySection.style.display = 'block';
+            }
+            
+            if (upgradeType === 'component_add' || upgradeType === 'component_replace') {
+                newAccessorySection.style.display = 'block';
+            }
+            
+            checkFormValidity();
+        } else {
+            accessoriesSection.style.display = 'none';
+            document.getElementById('upgradeBtn').disabled = true;
+        }
+    });
+
+    // 产品型号变化时检查表单
+    document.getElementById('newProductSelect').addEventListener('change', checkFormValidity);
+    document.getElementById('oldAccessorySelect').addEventListener('change', checkFormValidity);
+    document.getElementById('newAccessorySelect').addEventListener('change', checkFormValidity);
+
+    function checkFormValidity() {
+        const newProductCode = document.getElementById('newProductSelect').value;
+        const upgradeType = document.getElementById('upgradeTypeSelect').value;
+        const oldAccessoryId = document.getElementById('oldAccessorySelect').value;
+        const newAccessoryId = document.getElementById('newAccessorySelect').value;
+        
+        let isValid = true;
+        
+        // 检查是否选择了新产品型号
+        if (!newProductCode) {
+            isValid = false;
+        }
+        
+        // 检查是否选择了升级类型
+        if (!upgradeType) {
+            isValid = false;
+        }
+        
+        // 根据升级类型检查配件选择
+        if (upgradeType === 'component_replace' || upgradeType === 'component_remove') {
+            if (!oldAccessoryId) {
+                isValid = false;
+            }
+        }
+        
+        if (upgradeType === 'component_add' || upgradeType === 'component_replace') {
+            if (!newAccessoryId) {
+                isValid = false;
+            }
+            
+            // 检查新配件库存
+            const selectedOption = document.querySelector('#newAccessorySelect option:checked');
+            if (selectedOption) {
+                const stock = parseInt(selectedOption.dataset.stock);
+                if (stock <= 0) {
+                    document.getElementById('newAccessorySelect').classList.add('is-invalid');
+                    isValid = false;
+                } else {
+                    document.getElementById('newAccessorySelect').classList.remove('is-invalid');
+                }
+            }
+        }
+        
+        document.getElementById('upgradeBtn').disabled = !isValid;
+    }
+
+    // 表单提交
+    document.getElementById('upgradeForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const newProductCode = document.getElementById('newProductSelect').value;
+        const upgradeType = document.getElementById('upgradeTypeSelect').value;
+        const oldAccessoryId = document.getElementById('oldAccessorySelect').value;
+        const newAccessoryId = document.getElementById('newAccessorySelect').value;
+        const description = document.getElementById('descriptionInput').value;
+        
+        if (!newProductCode || !upgradeType) {
+            alert('请填写完整信息');
+            return;
+        }
+        
+        // 确认操作
+        let confirmMessage = `确定要执行以下升级操作吗？\n\n`;
+        confirmMessage += `设备: ${deviceCode}\n`;
+        confirmMessage += `新型号: ${newProductCode}\n`;
+        confirmMessage += `升级类型: ${getUpgradeTypeText(upgradeType)}\n`;
+        
+        if (oldAccessoryId) {
+            const oldOption = document.querySelector('#oldAccessorySelect option:checked');
+            confirmMessage += `原配件: ${oldOption ? oldOption.dataset.name : ''}\n`;
+        }
+        
+        if (newAccessoryId) {
+            const newOption = document.querySelector('#newAccessorySelect option:checked');
+            confirmMessage += `新配件: ${newOption ? newOption.dataset.name : ''}\n`;
+        }
+        
+        if (!confirm(confirmMessage)) {
+            return;
+        }
+        
+        // 提交升级请求
+        document.getElementById('upgradeBtn').disabled = true;
+        document.getElementById('upgradeBtn').innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> 升级中...';
+
+        fetch('/devices/upgrade', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                deviceCode: deviceCode,
+                newProductCode: newProductCode,
+                upgradeType: upgradeType,
+                oldAccessoryId: oldAccessoryId || null,
+                newAccessoryId: newAccessoryId || null,
+                description: description
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('upgradeBtn').disabled = false;
+            document.getElementById('upgradeBtn').innerHTML = '<i class="bi bi-arrow-up-circle"></i> 执行升级';
+            
+            if (data.success) {
+                showResult(data.message, data.newDeviceCode);
+            } else {
+                alert(`升级失败: ${data.message}`);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('upgradeBtn').disabled = false;
+            document.getElementById('upgradeBtn').innerHTML = '<i class="bi bi-arrow-up-circle"></i> 执行升级';
+            alert('升级过程中发生错误，请稍后重试');
+        });
+    });
+
+    function getUpgradeTypeText(type) {
+        switch (type) {
+            case 'component_add':
+                return '添加配件';
+            case 'component_replace':
+                return '更换配件';
+            case 'component_remove':
+                return '移除配件';
+            default:
+                return '未知类型';
+        }
+    }
+
+    // 显示升级结果
+    function showResult(message, newDeviceCode) {
+        let html = `<div class="alert alert-success">${message}</div>`;
+        
+        if (newDeviceCode) {
+            html += `<div class="mt-3">
+                <p>设备已升级，新设备编号为: <strong>${newDeviceCode}</strong></p>
+                <p>您可以点击下方按钮查看新设备的详细信息。</p>
+            </div>`;
+        }
+        
+        document.getElementById('resultContent').innerHTML = html;
+        
+        const modal = new bootstrap.Modal(document.getElementById('resultModal'));
+        modal.show();
+        
+        // 设置查看设备按钮
+        document.getElementById('viewDeviceBtn').onclick = function() {
+            window.location.href = `/devices/view/${newDeviceCode || deviceCode}`;
+        };
+    }
+});
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

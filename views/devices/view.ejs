@@ -1,0 +1,343 @@
+<%- include('../layout') %>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5>设备详情 - <%= device.device_code %></h5>
+        <div>
+            <% if (device.status === 'in_warehouse' || device.status === 'available' || device.status === 'rented') { %>
+            <a href="/devices/upgrade/<%= device.device_code %>" class="btn btn-info">
+                <i class="bi bi-arrow-up-circle"></i> 升级设备
+            </a>
+            <% } %>
+            <a href="/devices" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> 返回列表
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        <!-- 设备基本信息 -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <h6>基本信息</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <td><strong>设备编号:</strong></td>
+                                <td><%= device.device_code %></td>
+                            </tr>
+                            <tr>
+                                <td><strong>产品型号:</strong></td>
+                                <td><%= device.product_specifications || device.product_code || '-' %></td>
+                            </tr>
+                            <tr>
+                                <td><strong>设备名称:</strong></td>
+                                <td><%= device.device_name %></td>
+                            </tr>
+                            <tr>
+                                <td><strong>当前状态:</strong></td>
+                                <td>
+                                    <% if (device.status === 'in_warehouse') { %>
+                                        <span class="badge bg-success">在仓库</span>
+                                    <% } else if (device.status === 'available') { %>
+                                        <span class="badge bg-primary">可用</span>
+                                    <% } else if (device.status === 'rented') { %>
+                                        <span class="badge bg-warning">已租出</span>
+                                    <% } else if (device.status === 'maintenance') { %>
+                                        <span class="badge bg-info">维护中</span>
+                                    <% } else if (device.status === 'upgraded') { %>
+                                        <span class="badge bg-secondary">已升级</span>
+                                    <% } else if (device.status === 'retired') { %>
+                                        <span class="badge bg-danger">退役/报废</span>
+                                    <% } %>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>组装日期:</strong></td>
+                                <td><%= device.assembly_date ? moment(device.assembly_date).format('YYYY-MM-DD HH:mm:ss') : '-' %></td>
+                            </tr>
+                            <tr>
+                                <td><strong>最后升级:</strong></td>
+                                <td><%= device.last_upgrade_date ? moment(device.last_upgrade_date).format('YYYY-MM-DD HH:mm:ss') : '-' %></td>
+                            </tr>
+                            <tr>
+                                <td><strong>创建时间:</strong></td>
+                                <td><%= device.created_at ? moment(device.created_at).format('YYYY-MM-DD HH:mm:ss') : '-' %></td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-8">
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <h6>设备配件</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>配件类别</th>
+                                        <th>配件名称</th>
+                                        <th>品牌型号</th>
+                                        <th>数量</th>
+                                        <th>批次ID</th>
+                                        <th>采购单价</th>
+                                        <th>最新价格</th>
+                                        <th>小计</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% if (typeof accessories !== 'undefined' && accessories && accessories.length > 0) { %>
+                                        <% accessories.forEach(accessory => { %>
+                                        <tr>
+                                            <td><%= accessory.category_name %></td>
+                                            <td><%= accessory.accessory_name %></td>
+                                            <td><%= accessory.brand %> <%= accessory.model %></td>
+                                            <td><%= accessory.quantity %></td>
+                                            <td><%= accessory.unique_batch_id || '-' %></td>
+                                            <td>¥<%= (Number(accessory.purchase_price) || 0).toFixed(2) %></td>
+                                            <td>¥<%= (Number(accessory.unit_price) || 0).toFixed(2) %></td>
+                                            <td>¥<%= ((Number(accessory.purchase_price) || 0) * (Number(accessory.quantity) || 0)).toFixed(2) %></td>
+                                        </tr>
+                                        <% }) %>
+                                    <% } else { %>
+                                        <tr>
+                                            <td colspan="8" class="text-center">暂无配件信息</td>
+                                        </tr>
+                                    <% } %>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 设备财务信息 -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6>财务概览</h6>
+            </div>
+            <div class="card-body">
+                <% const df = (typeof deviceFinancial !== 'undefined' && deviceFinancial)
+                    ? deviceFinancial
+                    : { totalRentalIncome: 0, originalPurchasePrice: 0, currentDepreciatedPrice: 0, depreciationAmount: 0, grossProfit: 0 }; %>
+                <div class="row text-center">
+                    <div class="col-md-3 mb-3 mb-md-0">
+                        <div class="text-muted small">累计租金收入</div>
+                        <div class="fs-5 fw-bold text-success">
+                            ¥<%= (typeof df.totalRentalIncome !== 'undefined' && df.totalRentalIncome !== null)
+                                ? df.totalRentalIncome.toFixed(2)
+                                : '0.00' %>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3 mb-md-0">
+                        <div class="text-muted small">配件采购价格</div>
+                        <div class="fs-5 fw-bold">
+                            <% if (df.originalPurchasePrice && df.originalPurchasePrice > 0) { %>
+                                ¥<%= df.originalPurchasePrice.toFixed(2) %>
+                            <% } else { %>
+                                ¥0.00
+                            <% } %>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3 mb-md-0">
+                        <div class="text-muted small">折旧后价格</div>
+                        <div class="fs-5 fw-bold text-primary">
+                            <% if (typeof df.currentDepreciatedPrice !== 'undefined' && df.currentDepreciatedPrice !== null) { %>
+                                ¥<%= df.currentDepreciatedPrice.toFixed(2) %>
+                            <% } else { %>
+                                ¥0.00
+                            <% } %>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-muted small">贬值金额</div>
+                        <div class="fs-5 fw-bold text-warning">
+                            <% if (typeof df.depreciationAmount !== 'undefined' && df.depreciationAmount !== null) { %>
+                                ¥<%= df.depreciationAmount.toFixed(2) %>
+                            <% } else { %>
+                                ¥0.00
+                            <% } %>
+                        </div>
+                    </div>
+                </div>
+                <hr class="my-3">
+                <div class="row text-center">
+                    <div class="col-12">
+                        <div class="text-muted small">毛利</div>
+                        <div class="fs-4 fw-bold <%= (df.grossProfit && df.grossProfit >= 0) ? 'text-success' : 'text-danger' %>">
+                            ¥<%= (typeof df.grossProfit !== 'undefined' && df.grossProfit !== null)
+                                ? df.grossProfit.toFixed(2)
+                                : '0.00' %>
+                        </div>
+                        <small class="text-muted">毛利 = 累计租金收入 - 贬值金额</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 设备升级历史 -->
+        <div class="card">
+            <div class="card-header">
+                <h6>升级历史</h6>
+            </div>
+            <div class="card-body">
+                <% if (typeof upgradeHistory !== 'undefined' && upgradeHistory && upgradeHistory.length > 0) { %>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>升级时间</th>
+                                    <th>升级类型</th>
+                                    <th>原产品型号</th>
+                                    <th>新产品型号</th>
+                                    <th>设备编号变更</th>
+                                    <th>配件</th>
+                                    <th>操作员</th>
+                                    <th>描述</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% upgradeHistory.forEach(upgrade => { %>
+                                <tr>
+                                    <td><%= moment(upgrade.upgrade_date).format('YYYY-MM-DD HH:mm') %></td>
+                                    <td>
+                                        <% if (upgrade.upgrade_type === 'component_add') { %>
+                                            <span class="badge bg-success">添加配件</span>
+                                        <% } else if (upgrade.upgrade_type === 'component_replace') { %>
+                                            <span class="badge bg-info">更换配件</span>
+                                        <% } else if (upgrade.upgrade_type === 'component_remove') { %>
+                                            <span class="badge bg-warning">移除配件</span>
+                                        <% } %>
+                                    </td>
+                                    <td>
+                                        <%= upgrade.old_product_code %><% if (upgrade.old_product_name) { %>-<%= upgrade.old_product_name %><% } %>
+                                    </td>
+                                    <td>
+                                        <%= upgrade.new_product_code %><% if (upgrade.new_product_name) { %>-<%= upgrade.new_product_name %><% } %>
+                                    </td>
+                                    <td>
+                                        <%= upgrade.old_device_code %><br>
+                                        <i class="bi bi-arrow-down"></i><br>
+                                        <%= upgrade.new_device_code %>
+                                    </td>
+                                    <td>
+                                        <% if (upgrade.upgrade_type === 'component_replace') { %>
+                                            <%= (upgrade.old_accessory_name || upgrade.accessory_name || '') %>
+                                            <% if (upgrade.old_accessory_name || upgrade.accessory_name) { %>
+                                                ->
+                                            <% } %>
+                                            <%= (upgrade.new_accessory_name || '') %>
+                                        <% } else if (upgrade.upgrade_type === 'component_add') { %>
+                                            添加：<%= (upgrade.new_accessory_name || upgrade.accessory_name || '-') %>
+                                        <% } else if (upgrade.upgrade_type === 'component_remove') { %>
+                                            移除：<%= (upgrade.old_accessory_name || upgrade.accessory_name || '-') %>
+                                        <% } else { %>
+                                            <%= upgrade.accessory_name || '-' %>
+                                        <% } %>
+                                    </td>
+                                    <td><%= upgrade.operator_name || '-' %></td>
+                                    <td><%= upgrade.description || '-' %></td>
+                                </tr>
+                                <% }) %>
+                            </tbody>
+                        </table>
+                    </div>
+                <% } else { %>
+                    <div class="alert alert-info">该设备暂无升级历史</div>
+                <% } %>
+            </div>
+        </div>
+
+        <!-- 设备租赁历史 -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6>租赁历史</h6>
+            </div>
+            <div class="card-body">
+                <% if (typeof rentalHistory !== 'undefined' && rentalHistory && rentalHistory.length > 0) { %>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>订单号</th>
+                                    <th>客户名称</th>
+                                    <th>起租日期</th>
+                                    <th>预计结束日期</th>
+                                    <th>实际退租日期</th>
+                                    <th>租赁状态</th>
+                                    <th>日租金</th>
+                                    <th>月租金</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% rentalHistory.forEach(record => { %>
+                                <tr>
+                                    <td>
+                                        <a href="/rental-orders/view/<%= record.rental_order_id %>">
+                                            <%= record.order_number %>
+                                        </a>
+                                    </td>
+                                    <td><%= record.customer_name || '-' %></td>
+                                    <td><%= record.start_date ? moment(record.start_date).format('YYYY-MM-DD') : '-' %></td>
+                                    <td><%= record.end_date ? moment(record.end_date).format('YYYY-MM-DD') : '-' %></td>
+                                    <td><%= record.actual_return_date ? moment(record.actual_return_date).format('YYYY-MM-DD') : '-' %></td>
+                                    <td>
+                                        <% if (record.order_status === 'pending') { %>
+                                            <span class="badge bg-secondary">待处理</span>
+                                        <% } else if (record.order_status === 'active') { %>
+                                            <span class="badge bg-primary">进行中</span>
+                                        <% } else if (record.order_status === 'expired') { %>
+                                            <span class="badge bg-warning">已过期</span>
+                                        <% } else if (record.order_status === 'returned') { %>
+                                            <span class="badge bg-success">已归还</span>
+                                        <% } else if (record.order_status === 'cancelled') { %>
+                                            <span class="badge bg-danger">已取消</span>
+                                        <% } else { %>
+                                            <span class="badge bg-secondary"><%= record.order_status || '-' %></span>
+                                        <% } %>
+                                    </td>
+                                    <td>¥<%= parseFloat(record.daily_rate || 0).toFixed(2) %></td>
+                                    <td>¥<%= parseFloat(record.monthly_rate || 0).toFixed(2) %></td>
+                                    <td>
+                                        <a href="/rental-orders/view/<%= record.rental_order_id %>" class="btn btn-sm btn-outline-primary">
+                                            订单详情
+                                        </a>
+                                    </td>
+                                </tr>
+                                <% }) %>
+                            </tbody>
+                        </table>
+                    </div>
+                <% } else { %>
+                    <div class="alert alert-info">该设备暂无租赁历史</div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 这里可以添加一些交互功能，比如：
+    // 1. 打印设备信息
+    // 2. 导出设备详情
+    // 3. 状态变更等
+    
+    // 添加打印功能
+    const printBtn = document.createElement('button');
+    printBtn.className = 'btn btn-outline-primary';
+    printBtn.innerHTML = '<i class="bi bi-printer"></i> 打印';
+    printBtn.onclick = function() {
+        window.print();
+    };
+    
+    // 将打印按钮添加到header区域
+    const headerButtons = document.querySelector('.card-header .d-flex');
+    if (headerButtons) {
+        headerButtons.appendChild(printBtn);
+    }
+});
+</script>

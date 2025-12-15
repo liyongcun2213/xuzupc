@@ -1,0 +1,259 @@
+<%- include('../layout') %>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5>设备管理</h5>
+        <div>
+            <a href="/devices/assemble" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> 设备组装
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        <!-- 搜索和筛选 -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="input-group position-relative">
+                    <input type="text" class="form-control" id="searchInput" placeholder="搜索设备编号 / 名称 / 产品型号..." autocomplete="off">
+                    <button class="btn btn-outline-secondary" type="button" id="searchBtn">
+                        <i class="bi bi-search"></i>
+                    </button>
+                    <div id="autocompleteResults" class="list-group position-absolute w-100" style="top: 100%; left: 0; z-index: 1050; max-height: 300px; overflow-y: auto; display: none;"></div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" id="productCodeFilter">
+                    <option value="">所有产品型号</option>
+                    <% if (typeof productCodes !== 'undefined' && productCodes) { %>
+                        <% productCodes.forEach(product => { %>
+                        <option value="<%= product.product_code %>">
+                            <%= product.specifications || product.product_code %> (<%= product.count %>台)
+                        </option>
+                        <% }) %>
+                    <% } %>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" id="statusFilter">
+                    <option value="">所有状态</option>
+                    <option value="in_warehouse">在仓库</option>
+                    <option value="available">可用</option>
+                    <option value="rented">已租出</option>
+                    <option value="maintenance">维护中</option>
+                    <option value="upgraded">已升级</option>
+                    <option value="retired">退役/报废</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-success" id="resetFilters">
+                    <i class="bi bi-arrow-clockwise"></i> 重置
+                </button>
+            </div>
+        </div>
+
+        <!-- 设备列表 -->
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>设备编号</th>
+                        <th>产品型号</th>
+                        <th>设备名称</th>
+                        <th>状态</th>
+                        <th>组装日期</th>
+                        <th>最后升级</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% if (typeof devices !== 'undefined' && devices && devices.length > 0) { %>
+                        <% devices.forEach(device => { %>
+                        <tr>
+                            <td>
+                                <a href="/devices/view/<%= device.device_code %>" class="text-decoration-none">
+                                    <%= device.device_code %>
+                                </a>
+                            </td>
+                            <td><%= device.product_specifications || device.product_code || '-' %></td>
+                            <td><%= device.device_name %></td>
+                            <td>
+                                <% if (device.status === 'in_warehouse') { %>
+                                    <span class="badge bg-success">在仓库</span>
+                                <% } else if (device.status === 'available') { %>
+                                    <span class="badge bg-primary">可用</span>
+                                <% } else if (device.status === 'rented') { %>
+                                    <span class="badge bg-warning">已租出</span>
+                                <% } else if (device.status === 'maintenance') { %>
+                                    <span class="badge bg-info">维护中</span>
+                                <% } else if (device.status === 'upgraded') { %>
+                                    <span class="badge bg-secondary">已升级</span>
+                                <% } else if (device.status === 'retired') { %>
+                                    <span class="badge bg-danger">退役/报废</span>
+                                <% } else if (device.status === 'scrapped') { %>
+                                    <span class="badge bg-danger">报废</span>
+                                <% } %>
+                            </td>
+                            <td><%= device.assembly_date ? moment(device.assembly_date).format('YYYY-MM-DD') : '-' %></td>
+                            <td><%= device.last_upgrade_date ? moment(device.last_upgrade_date).format('YYYY-MM-DD') : '-' %></td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <a href="/devices/qrcode/<%= device.device_code %>" class="btn btn-outline-secondary" title="设备微信二维码" target="_blank">
+                                        <i class="bi bi-qr-code"></i>
+                                    </a>
+                                    <a href="/devices/view/<%= device.device_code %>" class="btn btn-outline-primary" title="查看详情">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <% if (device.status === 'in_warehouse' || device.status === 'available' || device.status === 'rented') { %>
+                                        <a href="/devices/upgrade/<%= device.device_code %>" class="btn btn-outline-info" title="升级设备">
+                                            <i class="bi bi-arrow-up-circle"></i>
+                                        </a>
+                                    <% } %>
+                                    <% if (device.status === 'in_warehouse' || device.status === 'available' || device.status === 'maintenance' || device.status === 'upgraded') { %>
+                                        <a href="/devices/scrap/<%= device.device_code %>" class="btn btn-outline-danger" title="报废设备">
+                                            <i class="bi bi-trash"></i>
+                                        </a>
+                                    <% } %>
+                                </div>
+                            </td>
+                        </tr>
+                        <% }) %>
+                    <% } else { %>
+                        <tr>
+                            <td colspan="7" class="text-center">暂无设备数据</td>
+                        </tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 分页 -->
+        <% if (typeof totalPages !== 'undefined' && totalPages && totalPages > 1) { %>
+        <nav aria-label="设备列表分页">
+            <ul class="pagination justify-content-center">
+                <% if (typeof currentPage !== 'undefined' && currentPage > 1) { %>
+                <li class="page-item">
+                    <a class="page-link" href="?page=<%= currentPage - 1 %>">上一页</a>
+                </li>
+                <% } %>
+
+                <% for (let i = 1; i <= totalPages; i++) { %>
+                <li class="page-item <%= (typeof currentPage !== 'undefined' && i === currentPage) ? 'active' : '' %>">
+                    <a class="page-link" href="?page=<%= i %>"><%= i %></a>
+                </li>
+                <% } %>
+
+                <% if (typeof currentPage !== 'undefined' && typeof totalPages !== 'undefined' && currentPage < totalPages) { %>
+                <li class="page-item">
+                    <a class="page-link" href="?page=<%= currentPage + 1 %>">下一页</a>
+                </li>
+                <% } %>
+            </ul>
+        </nav>
+        <% } %>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const autocompleteResults = document.getElementById('autocompleteResults');
+    let debounceTimer;
+
+    // Autocomplete 功能
+    searchInput.addEventListener('input', function() {
+        const keyword = this.value.trim();
+        
+        clearTimeout(debounceTimer);
+        
+        if (keyword.length < 1) {
+            autocompleteResults.style.display = 'none';
+            return;
+        }
+        
+        debounceTimer = setTimeout(() => {
+            fetch(`/api/autocomplete/devices?q=${encodeURIComponent(keyword)}&limit=10`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.data.length > 0) {
+                        renderAutocomplete(data.data);
+                    } else {
+                        autocompleteResults.style.display = 'none';
+                    }
+                })
+                .catch(err => {
+                    console.error('Autocomplete error:', err);
+                    autocompleteResults.style.display = 'none';
+                });
+        }, 300);
+    });
+
+    function renderAutocomplete(results) {
+        autocompleteResults.innerHTML = results.map(item => 
+            `<button type="button" class="list-group-item list-group-item-action" data-value="${item.value}">
+                ${item.label}
+            </button>`
+        ).join('');
+        
+        autocompleteResults.style.display = 'block';
+        
+        // 点击选项
+        autocompleteResults.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', function() {
+                searchInput.value = this.dataset.value;
+                autocompleteResults.style.display = 'none';
+                performSearch();
+            });
+        });
+    }
+
+    // 点击外部关闭 autocomplete
+    document.addEventListener('click', function(e) {
+        if (!searchInput.contains(e.target) && !autocompleteResults.contains(e.target)) {
+            autocompleteResults.style.display = 'none';
+        }
+    });
+
+    // 搜索功能
+    document.getElementById('searchBtn').addEventListener('click', function() {
+        performSearch();
+    });
+
+    // 搜索框回车事件
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            autocompleteResults.style.display = 'none';
+            performSearch();
+        }
+    });
+
+    // 筛选条件变化时自动搜索
+    document.getElementById('productCodeFilter').addEventListener('change', function() {
+        performSearch();
+    });
+
+    document.getElementById('statusFilter').addEventListener('change', function() {
+        performSearch();
+    });
+
+    // 重置筛选条件
+    document.getElementById('resetFilters').addEventListener('click', function() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('productCodeFilter').value = '';
+        document.getElementById('statusFilter').value = '';
+        window.location.href = '/devices';
+    });
+
+    function performSearch() {
+        const searchTerm = document.getElementById('searchInput').value.trim();
+        const productCode = document.getElementById('productCodeFilter').value;
+        const status = document.getElementById('statusFilter').value;
+
+        const params = new URLSearchParams();
+        if (searchTerm) params.append('search', searchTerm);
+        if (productCode) params.append('productCode', productCode);
+        if (status) params.append('status', status);
+
+        window.location.href = `/devices?${params.toString()}`;
+    }
+});
+</script>

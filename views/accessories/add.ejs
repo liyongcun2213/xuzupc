@@ -1,0 +1,119 @@
+<%- include('../layout') %>
+
+<div class="card">
+    <div class="card-header">
+        <h5>添加配件</h5>
+    </div>
+    <div class="card-body">
+        <form action="/accessories/add" method="post" id="accessoryForm">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="name" class="form-label">配件名称 <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="name" name="name" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="category_id" class="form-label">配件类别 <span class="text-danger">*</span></label>
+                    <select class="form-select" id="category_id" name="category_id" required>
+                        <option value="">请选择类别</option>
+                        <% categories.forEach(category => { %>
+                        <option value="<%= category.id %>"><%= category.name %></option>
+                        <% }) %>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="brand" class="form-label">品牌 <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="brand" name="brand" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="model" class="form-label">型号规格</label>
+                    <input type="text" class="form-control" id="model" name="model">
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="unit_price" class="form-label">参考单价</label>
+                    <div class="input-group">
+                        <span class="input-group-text">¥</span>
+                        <input type="number" step="0.01" min="0" class="form-control" id="unit_price" name="unit_price">
+                    </div>
+                    <small class="text-muted">此价格为参考单价，实际采购价格以采购模块为准</small>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="min_stock_level" class="form-label">最低库存预警</label>
+                    <input type="number" min="0" class="form-control" id="min_stock_level" name="min_stock_level" value="5">
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label for="notes" class="form-label">备注</label>
+                <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+            </div>
+            
+            <div class="d-flex justify-content-end">
+                <a href="/accessories" class="btn btn-secondary me-2">取消</a>
+                <button type="submit" class="btn btn-primary">保存</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 表单验证和提交
+    document.getElementById('accessoryForm').addEventListener('submit', function(e) {
+        e.preventDefault(); // 阻止默认的表单提交
+        
+        // 验证必填字段
+        const name = document.getElementById('name').value.trim();
+        const categoryId = document.getElementById('category_id').value;
+        const brand = document.getElementById('brand').value.trim();
+        
+        if (!name || !categoryId || !brand) {
+            alert('请填写必填字段：配件名称、配件类别和品牌');
+            return;
+        }
+        
+        // 使用AJAX提交表单
+        const formData = new FormData(this);
+        const formBody = new URLSearchParams();
+        formData.forEach((value, key) => {
+            formBody.append(key, value);
+        });
+        
+        // 禁用提交按钮防止重复提交
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> 保存中...';
+        
+        fetch('/accessories/add', {
+            method: 'POST',
+            body: formBody
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('配件添加成功');
+                // 重定向到配件列表页面
+                window.location.href = '/accessories';
+            } else {
+                alert('添加失败: ' + data.message);
+                // 恢复提交按钮
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('提交失败，请稍后再试');
+            // 恢复提交按钮
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        });
+    });
+});
+</script>

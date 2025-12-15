@@ -1,0 +1,362 @@
+<%- include('../layout') %>
+
+<!-- 调试信息 -->
+<% if (typeof accessories !== 'undefined') { %>
+    <script>console.log('配件数量:', <%= accessories.length %>);</script>
+<% } else { %>
+    <script>console.log('未定义accessories变量');</script>
+<% } %>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 style="font-size: 0.875rem;">配件管理</h5>
+        <div>
+            <a href="/accessories/stats" class="btn btn-info me-2">
+                <i class="bi bi-graph-up"></i> 库存统计
+            </a>
+            <a href="/accessories/price-history" class="btn btn-secondary me-2">
+                <i class="bi bi-clock-history"></i> 价格管理
+            </a>
+            <a href="/accessories/inventory-check" class="btn btn-warning me-2">
+                <i class="bi bi-clipboard-check"></i> 库存盘点
+            </a>
+            <a href="/accessories/add" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> 添加配件
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        <!-- 搜索和筛选 -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="input-group position-relative">
+                    <input type="text" class="form-control" id="searchInput" placeholder="搜索配件名称、品牌或型号..." autocomplete="off">
+                    <button class="btn btn-outline-secondary" type="button" id="searchBtn">
+                        <i class="bi bi-search"></i>
+                    </button>
+                    <div id="autocompleteResults" class="list-group position-absolute w-100" style="top: 100%; left: 0; z-index: 1050; max-height: 300px; overflow-y: auto; display: none;"></div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" id="categoryFilter">
+                    <option value="">所有类别</option>
+                    <% if (typeof categories !== 'undefined' && categories) { %>
+                        <% categories.forEach(category => { %>
+                        <option value="<%= category.id %>" <%= (typeof selectedCategoryId !== 'undefined' && selectedCategoryId && String(selectedCategoryId) == String(category.id)) ? 'selected' : '' %>><%= category.name %></option>
+                        <% }) %>
+                    <% } %>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" id="statusFilter">
+                    <option value="" <%= (!selectedStatus) ? 'selected' : '' %>>所有状态</option>
+                    <option value="in_warehouse" <%= (selectedStatus === 'in_warehouse') ? 'selected' : '' %>>在仓库</option>
+                    <option value="assembled" <%= (selectedStatus === 'assembled') ? 'selected' : '' %>>已组装</option>
+                    <option value="scrapped" <%= (selectedStatus === 'scrapped') ? 'selected' : '' %>>报废</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" id="sortBy">
+                    <option value="name" <%= (selectedSortBy === 'name') ? 'selected' : '' %>>按名称</option>
+                    <option value="brand" <%= (selectedSortBy === 'brand') ? 'selected' : '' %>>按品牌</option>
+                    <option value="purchase_price" <%= (selectedSortBy === 'purchase_price') ? 'selected' : '' %>>按采购价格</option>
+                    <option value="stock_quantity" <%= (selectedSortBy === 'stock_quantity') ? 'selected' : '' %>>按库存数量</option>
+                    <option value="updated_at" <%= (selectedSortBy === 'updated_at') ? 'selected' : '' %>>按更新时间</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" id="sortOrder">
+                    <option value="asc" <%= (selectedSortOrder === 'asc') ? 'selected' : '' %>>升序</option>
+                    <option value="desc" <%= (selectedSortOrder === 'desc') ? 'selected' : '' %>>降序</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- 配件统计信息 -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card bg-light">
+                    <div class="card-body text-center">
+                        <h6 class="card-title">配件型号数</h6>
+                        <h3 class="text-primary"><%= (typeof totalStats !== 'undefined' && totalStats) ? totalStats.totalTypes : 0 %></h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-light">
+                    <div class="card-body text-center">
+                        <h6 class="card-title">总库存量</h6>
+                        <h3 class="text-info"><%= (typeof totalStats !== 'undefined' && totalStats) ? totalStats.totalQuantity : 0 %></h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-light">
+                    <div class="card-body text-center">
+                        <h6 class="card-title">低库存预警</h6>
+                        <h3 class="text-warning"><%= (typeof totalStats !== 'undefined' && totalStats) ? totalStats.lowStockCount : 0 %></h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-light">
+                    <div class="card-body text-center">
+                        <h6 class="card-title">配件分类数</h6>
+                        <h3 class="text-success"><%= (typeof totalStats !== 'undefined' && totalStats) ? totalStats.categoryCount : 0 %></h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 配件列表 -->
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>配件名称</th>
+                        <th>类别</th>
+                        <th>品牌</th>
+                        <th>型号</th>
+                        <th>采购总数量</th>
+                        <th>使用总数量</th>
+                        <th>库存数量</th>
+                        <th>报废数量</th>
+                        <th>最低库存</th>
+                        <th>库存状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <% if (typeof accessories !== 'undefined' && accessories) { %>
+                        <% accessories.forEach(accessory => { %>
+                        <tr>
+                        <td>
+                            <a href="/accessories/<%= accessory.id %>" class="text-decoration-none">
+                                <%= accessory.name %>
+                            </a>
+                        </td>
+                        <td><%= accessory.category_name %></td>
+                        <td><%= accessory.brand || '-' %></td>
+                        <td><%= accessory.model || '-' %></td>
+                        <td><%= accessory.purchase_total_quantity || 0 %></td>
+                        <td><%= accessory.in_use_quantity || 0 %></td>
+                        <td><%= accessory.stock_quantity || 0 %></td>
+                        <td><%= accessory.scrap_quantity || 0 %></td>
+                        <td><%= accessory.min_stock_level || 5 %></td>
+                        <td>
+                            <% 
+                            const stockQty = accessory.stock_quantity || 0;
+                            const minStock = accessory.min_stock_level || 5;
+
+                            if (stockQty === 0) { %>
+                                <span class="badge bg-danger">缺货</span>
+                            <% } else if (stockQty <= minStock) { %>
+                                <span class="badge bg-warning">库存不足</span>
+                            <% } else { %>
+                                <span class="badge bg-success">库存充足</span>
+                            <% } %>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <a href="/accessories/view/<%= accessory.id %>" class="btn btn-outline-primary" title="查看详情">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="/accessories/edit/<%= accessory.id %>" class="btn btn-outline-secondary" title="编辑">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a href="/accessories/batches/<%= accessory.id %>" class="btn btn-outline-info" title="批次管理">
+                                    <i class="bi bi-layers"></i>
+                                </a>
+                                <button class="btn btn-outline-danger delete-btn" data-id="<%= accessory.id %>" title="删除">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                        <% }) %>
+                    <% } else { %>
+                        <tr>
+                            <td colspan="11" class="text-center">暂无配件数据</td>
+                        </tr>
+                    <% } %>
+
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 分页 -->
+        <nav aria-label="配件列表分页">
+            <ul class="pagination justify-content-center">
+                <% if (typeof currentPage !== 'undefined' && typeof totalPages !== 'undefined' && currentPage > 1) { %>
+                <li class="page-item">
+                    <a class="page-link" href="?page=<%= currentPage - 1 %>">上一页</a>
+                </li>
+                <% } %>
+
+                <% if (typeof totalPages !== 'undefined') { 
+                    const startPage = typeof currentPage !== 'undefined' ? Math.max(1, currentPage - 2) : 1;
+                    const endPage = typeof currentPage !== 'undefined' ? Math.min(totalPages, currentPage + 2) : totalPages;
+                    
+                    for (let i = 1; i <= totalPages; i++) { %>
+                <li class="page-item <%= (typeof currentPage !== 'undefined' && i === currentPage) ? 'active' : '' %>">
+                    <a class="page-link" href="?page=<%= i %>"><%= i %></a>
+                </li>
+                <% } } %>
+
+                <% if (typeof currentPage !== 'undefined' && typeof totalPages !== 'undefined' && currentPage < totalPages) { %>
+                <li class="page-item">
+                    <a class="page-link" href="?page=<%= currentPage + 1 %>">下一页</a>
+                </li>
+                <% } %>
+            </ul>
+        </nav>
+    </div>
+</div>
+
+<!-- 删除确认模态框 -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">确认删除</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>确定要删除此配件吗？此操作不可撤销！</p>
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    注意：删除配件将同时删除相关的批次记录、价格历史和库存记录。
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">确认删除</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const autocompleteResults = document.getElementById('autocompleteResults');
+    let debounceTimer;
+
+    // Autocomplete 功能
+    searchInput.addEventListener('input', function() {
+        const keyword = this.value.trim();
+        
+        clearTimeout(debounceTimer);
+        
+        if (keyword.length < 1) {
+            autocompleteResults.style.display = 'none';
+            return;
+        }
+        
+        debounceTimer = setTimeout(() => {
+            fetch(`/api/autocomplete/accessories?q=${encodeURIComponent(keyword)}&limit=10`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.data.length > 0) {
+                        renderAutocomplete(data.data);
+                    } else {
+                        autocompleteResults.style.display = 'none';
+                    }
+                })
+                .catch(err => {
+                    console.error('Autocomplete error:', err);
+                    autocompleteResults.style.display = 'none';
+                });
+        }, 300);
+    });
+
+    function renderAutocomplete(results) {
+        autocompleteResults.innerHTML = results.map(item => 
+            `<button type="button" class="list-group-item list-group-item-action" data-value="${item.value}">
+                ${item.label}
+            </button>`
+        ).join('');
+        
+        autocompleteResults.style.display = 'block';
+        
+        // 点击选项
+        autocompleteResults.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', function() {
+                searchInput.value = this.dataset.value;
+                autocompleteResults.style.display = 'none';
+                document.getElementById('searchBtn').click();
+            });
+        });
+    }
+
+    // 点击外部关闭 autocomplete
+    document.addEventListener('click', function(e) {
+        if (!searchInput.contains(e.target) && !autocompleteResults.contains(e.target)) {
+            autocompleteResults.style.display = 'none';
+        }
+    });
+
+    // 删除按钮事件
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    let deleteId = null;
+
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            deleteId = this.getAttribute('data-id');
+            deleteModal.show();
+        });
+    });
+
+    document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+        if (deleteId) {
+            window.location.href = `/accessories/delete/${deleteId}`;
+        }
+    });
+
+    // 搜索功能
+    document.getElementById('searchBtn').addEventListener('click', function() {
+        const searchTerm = document.getElementById('searchInput').value.trim();
+        const category = document.getElementById('categoryFilter').value;
+        const status = document.getElementById('statusFilter').value;
+        const sortBy = document.getElementById('sortBy').value;
+        const sortOrder = document.getElementById('sortOrder').value;
+
+        const params = new URLSearchParams();
+        if (searchTerm) params.append('search', searchTerm);
+        if (category) params.append('category', category);
+        if (status) params.append('status', status);
+        if (sortBy) params.append('sort', sortBy);
+        if (sortOrder) params.append('order', sortOrder);
+
+        window.location.href = `/accessories?${params.toString()}`;
+    });
+
+    // 搜索框回车事件
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            autocompleteResults.style.display = 'none';
+            document.getElementById('searchBtn').click();
+        }
+    });
+
+    // 筛选条件变化时自动搜索
+    document.getElementById('categoryFilter').addEventListener('change', function() {
+        document.getElementById('searchBtn').click();
+    });
+
+    document.getElementById('statusFilter').addEventListener('change', function() {
+        document.getElementById('searchBtn').click();
+    });
+
+    document.getElementById('sortBy').addEventListener('change', function() {
+        document.getElementById('searchBtn').click();
+    });
+
+    document.getElementById('sortOrder').addEventListener('change', function() {
+        document.getElementById('searchBtn').click();
+    });
+});
+</script>
+
+<%- include('../base-footer') %>

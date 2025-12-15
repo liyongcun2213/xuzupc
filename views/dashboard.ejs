@@ -1,0 +1,121 @@
+<%- include('layout') %>
+
+<div class="row g-3 mb-4">
+    <div class="col-xl-3 col-md-6">
+        <div class="dashboard-metric-card">
+            <div class="dashboard-metric-info">
+                <div class="dashboard-metric-label">活跃客户</div>
+                <div class="dashboard-metric-value"><%= customerCount %></div>
+                <div class="dashboard-metric-sub">最近有业务往来的客户数量</div>
+            </div>
+            <div class="dashboard-metric-circle green">
+                客户
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+        <div class="dashboard-metric-card">
+            <div class="dashboard-metric-info">
+                <div class="dashboard-metric-label">可用设备</div>
+                <div class="dashboard-metric-value"><%= deviceCount %></div>
+                <div class="dashboard-metric-sub">当前库存中可出租的设备数量</div>
+            </div>
+            <div class="dashboard-metric-circle blue">
+                设备
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+        <div class="dashboard-metric-card">
+            <div class="dashboard-metric-info">
+                <div class="dashboard-metric-label">活跃租赁</div>
+                <div class="dashboard-metric-value"><%= activeRentals %></div>
+                <div class="dashboard-metric-sub">正在执行中的租赁订单</div>
+            </div>
+            <div class="dashboard-metric-circle indigo">
+                租赁
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+        <div class="dashboard-metric-card">
+            <div class="dashboard-metric-info">
+                <div class="dashboard-metric-label">今日订单</div>
+                <div class="dashboard-metric-value"><%= todayOrders %></div>
+                <div class="dashboard-metric-sub">今天新创建的租赁订单数量</div>
+            </div>
+            <div class="dashboard-metric-circle amber">
+                今日
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="dashboard-section-card">
+            <div class="dashboard-section-header">
+                <div>
+                    <div class="dashboard-section-title">业务概览</div>
+                    <div class="dashboard-section-sub">今天与最近30天的关键指标概览</div>
+                </div>
+            </div>
+            <div class="dashboard-section-body">
+                <div class="row g-3 mb-2 small text-muted">
+                    <div class="col-6">今日订单：<span class="fw-semibold"><%= todayOrders %></span></div>
+                    <div class="col-6">活跃租赁：<span class="fw-semibold"><%= activeRentals %></span></div>
+                </div>
+                <div class="dashboard-placeholder-chart">
+                    <span>这里可以接入租赁趋势/收入趋势图表（暂为占位，可后续扩展）</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="dashboard-section-card">
+            <div class="dashboard-section-header">
+                <div class="dashboard-section-title">快速操作</div>
+            </div>
+            <div class="dashboard-quick-actions">
+                <a href="/customers/add" class="dashboard-quick-btn">
+                    <i class="bi bi-person-plus"></i>
+                    <div class="label">添加客户</div>
+                    <div class="small text-muted">录入新的租赁客户信息</div>
+                </a>
+                <a href="/rental-orders" class="dashboard-quick-btn">
+                    <i class="bi bi-arrow-left-right"></i>
+                    <div class="label">创建租赁订单</div>
+                    <div class="small text-muted">从设备库存快速生成订单</div>
+                </a>
+                <a href="/purchase-orders" class="dashboard-quick-btn">
+                    <i class="bi bi-cart-plus"></i>
+                    <div class="label">创建采购订单</div>
+                    <div class="small text-muted">采购新设备或配件</div>
+                </a>
+                <a href="/returns" class="dashboard-quick-btn">
+                    <i class="bi bi-arrow-return-left"></i>
+                    <div class="label">处理退租</div>
+                    <div class="small text-muted">查看并处理到期退租设备</div>
+                </a>
+            </div>
+        </div>
+
+        <div class="dashboard-section-card">
+            <div class="dashboard-section-header">
+                <div class="dashboard-section-title">系统信息</div>
+            </div>
+            <div class="dashboard-section-body small text-muted">
+                <div class="mb-1">系统版本：1.0.0</div>
+                <div class="mb-1">数据库：MySQL</div>
+                <div class="mb-1">当前用户：<span class="fw-semibold"><%= user.real_name %></span> （<%= user.role === 'admin' ? '管理员' : user.role === 'finance' ? '财务' : '业务员' %>）</div>
+                <div class="mb-1">登录时间：<%= moment().format('YYYY-MM-DD HH:mm:ss') %></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%- include('base-footer') %>

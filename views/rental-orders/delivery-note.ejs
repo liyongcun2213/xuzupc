@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设备交货单</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: "SimSun", "Microsoft YaHei", Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+            font-size: 12px;
+        }
+        
+        .delivery-note {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px 40px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        
+        .title {
+            text-align: center;
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 25px;
+            letter-spacing: 2px;
+        }
+        
+        .section-label {
+            font-size: 13px;
+            margin-bottom: 10px;
+            margin-top: 15px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+            font-size: 12px;
+        }
+        
+        table th, table td {
+            border: 1px solid #000;
+            padding: 6px 8px;
+            text-align: center;
+            vertical-align: middle;
+        }
+        
+        table th {
+            font-weight: bold;
+        }
+        
+        .text-left {
+            text-align: left !important;
+            padding-left: 10px !important;
+        }
+        
+        .text-right {
+            text-align: right !important;
+            padding-right: 10px !important;
+        }
+        
+        .bold {
+            font-weight: bold;
+        }
+        
+        .header-cell {
+            background: #fff;
+            font-weight: bold;
+            text-align: left;
+            padding-left: 10px;
+        }
+        
+        .merged-cell {
+            border-right: none;
+        }
+        
+        .footer-line {
+            margin-top: 30px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+        }
+        
+        .footer-item {
+            flex: 1;
+        }
+        
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            
+            .delivery-note {
+                box-shadow: none;
+                padding: 20px;
+            }
+            
+            .no-print {
+                display: none;
+            }
+        }
+        
+        .print-button {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .print-button button {
+            padding: 10px 30px;
+            font-size: 16px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .print-button button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="print-button no-print">
+        <button onclick="window.print()">打印交货单</button>
+        <button onclick="window.close()" style="background: #6c757d; margin-left: 10px;">关闭</button>
+    </div>
+    
+    <div class="delivery-note">
+        <div class="title">设备交货单</div>
+        
+        <!-- 一、订单信息 -->
+        <div class="section-label">一、订单信息<span style="float: right; margin-right: 20px;">单号：<%= order.order_number %></span></div>
+        
+        <table>
+            <tr>
+                <td class="header-cell" style="width: 10%;">客户名称</td>
+                <td class="text-left" style="width: 28%;"><%= order.customer_name || '-' %></td>
+                <td class="header-cell" style="width: 10%;">客户地址</td>
+                <td class="text-left" style="width: 52%;" colspan="3"><%= order.customer_address || '-' %></td>
+            </tr>
+            <tr>
+                <td class="header-cell">联系人</td>
+                <td class="text-left"><%= order.contact_person || '-' %>&nbsp;&nbsp;&nbsp;<%= order.contact_phone || '' %></td>
+                <td class="header-cell">租赁期限</td>
+                <td class="text-left" style="white-space: nowrap;"><%= moment(order.start_date).format('YYYY年MM月DD日') %>&nbsp;~&nbsp;<%= order.end_date ? moment(order.end_date).format('YYYY年MM月DD日') : '-' %></td>
+                <td class="header-cell" style="width: 10%; white-space: nowrap;">送货时间</td>
+                <td class="text-left" style="width: 15%; white-space: nowrap;"><%= moment(order.start_date).format('YYYY年MM月DD日') %></td>
+            </tr>
+        </table>
+        
+        <!-- 二、设备交付清单 -->
+        <div class="section-label">二、设备交付清单</div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 12%;">商品类别</th>
+                    <th style="width: 18%;">商品名称</th>
+                    <th style="width: 28%;">规格型号</th>
+                    <th style="width: 8%;">数量</th>
+                    <th style="width: 12%;">单价<br>(元/台/月)</th>
+                    <th style="width: 12%;">金额<br>(元/月)</th>
+                    <th style="width: 10%;">设备价值<br>(元/台)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% let totalMonthlyAmount = 0; %>
+                <% let totalDeviceValue = 0; %>
+                <% let totalQuantity = 0; %>
+                <% 
+                // 按商品类别分组
+                const itemsByCategory = {};
+                items.forEach(item => {
+                    const category = item.category_name || '其他';
+                    if (!itemsByCategory[category]) {
+                        itemsByCategory[category] = [];
+                    }
+                    itemsByCategory[category].push(item);
+                });
+                %>
+                
+                <% Object.keys(itemsByCategory).forEach(category => { %>
+                    <% itemsByCategory[category].forEach((item, idx) => { 
+                        const quantity = item.quantity || 1;
+                        const monthlyRate = item.monthly_rate || 0;
+                        const monthlyAmount = quantity * monthlyRate;
+                        const deviceValuePerUnit = (item.device_value || 0) * 1.5;
+                        
+                        totalMonthlyAmount += monthlyAmount;
+                        totalDeviceValue += deviceValuePerUnit;
+                        totalQuantity += quantity;
+                    %>
+                    <tr>
+                        <% if (idx === 0) { %>
+                            <td rowspan="<%= itemsByCategory[category].length %>"><%= category %></td>
+                        <% } %>
+                        <td><%= item.product_name || '-' %></td>
+                        <td class="text-left"><%= item.specifications || item.product_code || '-' %></td>
+                        <td><%= quantity %></td>
+                        <td><%= monthlyRate.toFixed(0) %></td>
+                        <td><%= monthlyAmount.toFixed(0) %></td>
+                        <td><%= deviceValuePerUnit.toFixed(1) %></td>
+                    </tr>
+                    <% }); %>
+                <% }); %>
+                
+                <!-- 小计行 -->
+                <tr class="bold">
+                    <td colspan="3" class="text-right">总计：</td>
+                    <td><%= totalQuantity %></td>
+                    <td></td>
+                    <td><%= totalMonthlyAmount.toFixed(0) %></td>
+                    <td><%= totalDeviceValue.toFixed(1) %></td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <!-- 三、合计与付款信息 -->
+        <table>
+            <tr>
+                <td rowspan="4" class="header-cell bold" style="width: 12%; vertical-align: middle; text-align: center; padding-left: 0; padding-right: 0;">合计</td>
+                <td colspan="6" class="text-left bold" style="padding: 8px 10px;">租赁总额：&nbsp;<%= totalMonthlyAmount.toFixed(0) %>元/月</td>
+                <td rowspan="5" class="header-cell bold" style="width: 12%; vertical-align: middle; text-align: center; padding-left: 0; padding-right: 0;">付款信息</td>
+                <td rowspan="5" class="text-left" style="width: 28%; vertical-align: middle; padding: 10px; line-height: 2; white-space: nowrap; text-align: center;">
+                    <div>账户名称：厦门旭和科技有限公司</div>
+                    <div>账&nbsp;&nbsp;号：6232 7141 0000 0602 092</div>
+                    <div>开<span style="display:inline-block;width:0.5em;"></span>户<span style="display:inline-block;width:0.5em;"></span>行：工商银行厦门海沧支行</div>
+                    <div>地&nbsp;&nbsp;址：厦门市海沧区沧翔路116号</div>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="6" class="text-left bold" style="padding: 8px 10px; border-top: none;">设备总价值：&nbsp;<%= totalDeviceValue.toFixed(1) %>元</td>
+            </tr>
+            <tr>
+                <td colspan="6" class="text-left bold" style="padding: 8px 10px; border-top: 1px solid #000;">季度付款：&nbsp;<%= (totalMonthlyAmount / totalQuantity).toFixed(0) %>元/月×<%= totalQuantity %>台×3个月=<%= (totalMonthlyAmount * 3).toFixed(0) %>元</td>
+            </tr>
+            <tr>
+                <td colspan="6" class="text-left" style="padding: 8px 10px; border-top: none;">
+                    说明：电脑三个月起租，第一季度租期为：<%= moment(order.start_date).format('YYYY年MM月DD日') %>&nbsp;—&nbsp;<%= moment(order.start_date).add(3, 'months').format('YYYY年MM月DD日') %>
+                </td>
+            </tr>
+            <tr>
+                <td class="header-cell bold" style="vertical-align: middle; text-align: center; padding-left: 0; padding-right: 0;">付款方式</td>
+                <td colspan="6" class="text-left" style="padding: 8px 10px;">
+                    转账(后期租金都转到对公账号)
+                </td>
+            </tr>
+        </table>
+        
+        <!-- 底部签名 -->
+        <div class="footer-line">
+            <div class="footer-item">收货人：____________________</div>
+            <div class="footer-item" style="text-align: center;">联系电话：____________________</div>
+            <div class="footer-item" style="text-align: right;">日期：____________________</div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,1187 @@
+<%- include('../base-header') %>
+
+<style>
+    .stats-card {
+        border-left: 4px solid;
+        transition: transform 0.2s;
+    }
+    .stats-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+    }
+    .stats-card.receivable { border-left-color: #0d6efd; }
+    .stats-card.overdue { border-left-color: #dc3545; }
+    .stats-card.bad-debt { border-left-color: #6c757d; }
+    
+    .stats-value {
+        font-size: 1.75rem;
+        font-weight: 700;
+        margin: 0.5rem 0;
+    }
+    .stats-label {
+        color: #6c757d;
+        font-size: 0.875rem;
+    }
+    
+    .nav-tabs .nav-link {
+        color: #495057;
+        border: none;
+        border-bottom: 2px solid transparent;
+    }
+    .nav-tabs .nav-link.active {
+        color: #4a6cf7;
+        border-bottom: 2px solid #4a6cf7;
+        background: transparent;
+    }
+    
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 50px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .status-pending { background: #fff3cd; color: #856404; }
+    .status-partial { background: #cfe2ff; color: #084298; }
+    .status-paid { background: #d1e7dd; color: #0f5132; }
+    .status-overdue { background: #f8d7da; color: #842029; }
+    .status-bad_debt { background: #e2e3e5; color: #41464b; }
+    
+    .filter-bar {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+    }
+    
+    .table-hover tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+</style>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card stats-card receivable">
+            <div class="card-body">
+                <div class="stats-label">当前应收总额</div>
+                <div id="rentTotalReceivable" class="stats-value text-primary">¥<%= stats.total_receivable ? parseFloat(stats.total_receivable).toFixed(2) : '0.00' %></div>
+                <small class="text-muted">待支付 + 部分支付 + 逾期</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stats-card overdue">
+            <div class="card-body">
+                <div class="stats-label">逾期总额</div>
+                <div id="rentTotalOverdue" class="stats-value text-danger">¥<%= stats.total_overdue ? parseFloat(stats.total_overdue).toFixed(2) : '0.00' %></div>
+                <small class="text-muted">需尽快催收</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stats-card bad-debt">
+            <div class="card-body">
+                <div class="stats-label">历史坏账总额</div>
+                <div id="rentTotalBadDebt" class="stats-value text-secondary">¥<%= stats.total_bad_debt ? parseFloat(stats.total_bad_debt).toFixed(2) : '0.00' %></div>
+                <small class="text-muted">已认定坏账</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">租金管理</h5>
+        <div class="alert alert-info mb-0 py-2 px-3">
+            <i class="bi bi-info-circle"></i> 账单由"客户消费管理"模块自动生成，此处仅查询和收款
+        </div>
+    </div>
+    <div class="card-body">
+        <!-- 标签页导航 -->
+        <ul class="nav nav-tabs mb-3" id="rentManagementTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="receivable-tab" data-bs-toggle="tab" data-bs-target="#receivable" type="button">
+                    <i class="bi bi-file-earmark-text"></i> 应收款
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="received-tab" data-bs-toggle="tab" data-bs-target="#received" type="button">
+                    <i class="bi bi-cash-coin"></i> 实收款
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="overdue-tab" data-bs-toggle="tab" data-bs-target="#overdue" type="button">
+                    <i class="bi bi-exclamation-triangle"></i> 逾期款
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="bad-debt-tab" data-bs-toggle="tab" data-bs-target="#bad-debt" type="button">
+                    <i class="bi bi-x-circle"></i> 坏账
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="alerts-tab" data-bs-toggle="tab" data-bs-target="#alerts" type="button">
+                    <i class="bi bi-bell"></i> 提前5天预警
+                </button>
+            </li>
+        </ul>
+
+        <!-- 标签页内容 -->
+        <div class="tab-content" id="rentManagementTabContent">
+            <!-- 应收款标签页 -->
+            <div class="tab-pane fade show active" id="receivable" role="tabpanel">
+                <div class="filter-bar">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <input type="text" class="form-control" id="receivableSearch" placeholder="搜索客户名称/账单编号">
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select" id="receivableStatus">
+                                <option value="receivable">应收（默认）</option>
+                                <option value="overdue">逾期</option>
+                                <option value="paid">已支付</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-primary w-100" onclick="loadReceivableBills()">
+                                <i class="bi bi-search"></i> 查询
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> 账单由"客户消费管理"模块统一生成。此页面用于查看和统计应收账单，收款操作请在"实收款"标签页进行。
+                </div>
+                
+                <div id="receivableTableContainer"></div>
+            </div>
+
+            <!-- 实收款标签页 -->
+            <div class="tab-pane fade" id="received" role="tabpanel">
+                <div class="row mb-3">
+                    <div class="col-md-8">
+                        <h6>收款信息</h6>
+                        <div id="receiveFormContainer">
+                            <div class="alert alert-secondary">
+                                请先在"应收款"标签页选择一条账单，然后切换到此页面进行收款操作。
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <hr class="my-4">
+                
+                <h6 class="mb-3">实收记录</h6>
+                <div class="filter-bar">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <input type="text" class="form-control" id="receivedSearch" placeholder="搜索客户名称/账单编号">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="date" class="form-control" id="receivedStartDate">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="date" class="form-control" id="receivedEndDate">
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-primary w-100" onclick="loadReceivedRecords()">
+                                <i class="bi bi-search"></i> 查询
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div id="receivedTableContainer"></div>
+            </div>
+
+            <!-- 逾期款标签页 -->
+            <div class="tab-pane fade" id="overdue" role="tabpanel">
+                <div class="filter-bar">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <input type="text" class="form-control" id="overdueSearch" placeholder="搜索客户名称/账单编号">
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-primary w-100" onclick="loadOverdueBills()">
+                                <i class="bi bi-search"></i> 查询
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-warning w-100" onclick="updateOverdueStatus()">
+                                <i class="bi bi-arrow-repeat"></i> 更新逾期状态
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div id="overdueTableContainer"></div>
+            </div>
+
+            <!-- 坏账标签页 -->
+            <div class="tab-pane fade" id="bad-debt" role="tabpanel">
+                <ul class="nav nav-pills mb-3">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#" onclick="switchBadDebtView('list')">坏账列表</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="switchBadDebtView('approvals')">审批记录</a>
+                    </li>
+                </ul>
+                
+                <div id="badDebtListView">
+                    <div class="filter-bar">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <input type="text" class="form-control" id="badDebtSearch" placeholder="搜索客户名称/账单编号">
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-primary w-100" onclick="loadBadDebtBills()">
+                                    <i class="bi bi-search"></i> 查询
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="badDebtTableContainer"></div>
+                </div>
+                
+                <div id="badDebtApprovalsView" style="display: none;">
+                    <div class="filter-bar">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <select class="form-select" id="approvalStatus">
+                                    <option value="">全部</option>
+                                    <option value="pending">待审批</option>
+                                    <option value="approved">已批准</option>
+                                    <option value="rejected">已拒绝</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-primary w-100" onclick="loadBadDebtApprovals()">
+                                    <i class="bi bi-search"></i> 查询
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="approvalsTableContainer"></div>
+                </div>
+            </div>
+
+            <!-- 提前5天预警标签页 -->
+            <div class="tab-pane fade" id="alerts" role="tabpanel">
+                <div class="d-flex justify-content-between mb-3">
+                    <div class="filter-bar flex-grow-1 me-2">
+                        <select class="form-select" id="alertStatus" onchange="loadPaymentAlerts()">
+                            <option value="active">活动预警</option>
+                            <option value="processed">已处理</option>
+                            <option value="dismissed">已忽略</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-success" onclick="generateAlerts()">
+                        <i class="bi bi-bell-fill"></i> 生成预警
+                    </button>
+                </div>
+                <div id="alertsTableContainer"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 收款模态框 -->
+<div class="modal fade" id="receivePaymentModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">确认收款</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="receivePaymentForm">
+                    <input type="hidden" id="receiveBillId">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">客户名称</label>
+                            <input type="text" class="form-control" id="receiveCustomerName" readonly>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">账单编号</label>
+                            <input type="text" class="form-control" id="receiveBillNumber" readonly>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">账期</label>
+                            <input type="text" class="form-control" id="receiveBillPeriod" readonly>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <label class="form-label">账单金额</label>
+                            <input type="text" class="form-control" id="receiveBillAmount" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">已收金额</label>
+                            <input type="text" class="form-control" id="receiveAlreadyPaid" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">未收金额</label>
+                            <input type="text" class="form-control text-danger fw-bold" id="receiveRemainingAmount" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">本次打折金额</label>
+                            <input type="number" class="form-control" id="receiveDiscountAmount" step="0.01" value="0">
+                            <div class="form-text">账单金额 = 已收金额 + 未收金额 + 打折金额</div>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">本次收款金额 <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="receiveAmount" step="0.01" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">收款日期 <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="receiveDate" required>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="1" id="useUnallocated" checked>
+                                <label class="form-check-label" for="useUnallocated">
+                                    优先使用该客户在“客户消费管理”中的待分配收款余额冲减本账单
+                                </label>
+                                <div class="form-text" id="unallocatedHint">待分配收款余额：加载中...</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">收款方式 <span class="text-danger">*</span></label>
+                            <select class="form-select" id="paymentMethod" required>
+                                <option value="cash">现金</option>
+                                <option value="bank_transfer" selected>银行转账</option>
+                                <option value="alipay">支付宝</option>
+                                <option value="wechat">微信</option>
+                                <option value="check">支票</option>
+                                <option value="other">其他</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">交易流水号</label>
+                            <input type="text" class="form-control" id="transactionNo">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">收款账户</label>
+                            <input type="text" class="form-control" id="bankAccount" placeholder="银行账号或备注">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">记入账户（公账/私账） <span class="text-danger">*</span></label>
+                            <select class="form-select" id="financeAccountCode" required>
+                                <option value="public" selected>公司公账</option>
+                                <option value="private">法人私账</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">备注</label>
+                        <textarea class="form-control" id="receiveNotes" rows="2"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">操作员</label>
+                        <input type="text" class="form-control" value="<%= user.real_name %>" readonly>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-success" onclick="confirmReceive()">
+                    <i class="bi bi-check-circle"></i> 确认收款
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 申请坏账模态框 -->
+<div class="modal fade" id="applyBadDebtModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">申请坏账认定</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="applyBadDebtForm">
+                    <input type="hidden" id="badDebtBillId">
+                    <div class="mb-3">
+                        <label class="form-label">账单编号</label>
+                        <input type="text" class="form-control" id="badDebtBillNumber" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">客户名称</label>
+                        <input type="text" class="form-control" id="badDebtCustomerName" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">逾期天数</label>
+                        <input type="text" class="form-control" id="badDebtOverdueDays" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">认定原因 <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="badDebtReason" rows="4" required placeholder="请详细说明认定原因，如：客户失联、公司倒闭、多次催收无果等"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">证明文件（可选）</label>
+                        <input type="text" class="form-control" id="proofFiles" placeholder="输入文件路径或链接">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-warning" onclick="submitBadDebtApplication()">提交申请</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+let receivableBillsCache = {};
+// 页面加载时初始化
+document.addEventListener('DOMContentLoaded', function() {
+    // 收款日期不在页面加载时设为今天，在打开收款弹窗时按账单本期起日期设置
+    const receiveDateInput = document.getElementById('receiveDate');
+    if (receiveDateInput) {
+        receiveDateInput.value = '';
+    }
+    
+    // 加载应收账单
+    loadReceivableBills();
+    
+    // 标签页切换事件
+    document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
+        tab.addEventListener('shown.bs.tab', function(e) {
+            const target = e.target.getAttribute('data-bs-target');
+            if (target === '#received') loadReceivedRecords();
+            else if (target === '#overdue') loadOverdueBills();
+            else if (target === '#bad-debt') loadBadDebtBills();
+            else if (target === '#alerts') loadPaymentAlerts();
+        });
+    });
+});
+
+// 加载应收账单
+function loadReceivableBills(page = 1) {
+    const status = document.getElementById('receivableStatus').value;
+    const keyword = document.getElementById('receivableSearch').value;
+    
+    fetch(`/api/rent-management/receivable?status=${status}&keyword=${encodeURIComponent(keyword)}&page=${page}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                renderReceivableTable(data.data, data.pagination);
+            }
+        });
+}
+
+// 渲染应收账单表格
+function renderReceivableTable(bills, pagination) {
+    const statusMap = {
+        'unpaid': '<span class="status-badge status-pending">待支付</span>',
+        'paid': '<span class="status-badge status-paid">已支付</span>',
+        'cancelled': '<span class="status-badge status-bad_debt">已取消</span>'
+    };
+
+    receivableBillsCache = {};
+    
+    let html = `
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>账单编号</th>
+                        <th>客户名称</th>
+                        <th>账期</th>
+                        <th>出账日期</th>
+                        <th>账单金额</th>
+                        <th>未收金额</th>
+                        <th>状态</th>
+                        <th>逾期天数</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    if (bills.length === 0) {
+        html += '<tr><td colspan="9" class="text-center text-muted">暂无数据</td></tr>';
+    } else {
+        bills.forEach(bill => {
+            receivableBillsCache[bill.id] = bill;
+            html += `
+                <tr>
+                    <td>${bill.bill_number}</td>
+                    <td>${bill.customer_name}</td>
+                    <td>${bill.period_start} ~ ${bill.period_end}</td>
+                    <td>${bill.bill_date}</td>
+                    <td>¥${parseFloat(bill.bill_amount).toFixed(2)}</td>
+                    <td class="text-danger fw-bold">¥${parseFloat(bill.remaining_amount).toFixed(2)}</td>
+                    <td>${statusMap[bill.status] || bill.status}</td>
+                    <td>${bill.overdue_days > 0 ? '<span class="text-danger">' + bill.overdue_days + ' 天</span>' : '-'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" onclick="showReceiveModal(${bill.id})">查看</button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+        <nav>${renderPagination(pagination, 'loadReceivableBills')}</nav>
+    `;
+    
+    document.getElementById('receivableTableContainer').innerHTML = html;
+}
+
+// 显示收款模态框
+function showReceiveModal(billId) {
+    if (!billId) {
+        alert('未找到账单ID，无法加载账单详情');
+        return;
+    }
+
+    const bill = receivableBillsCache[billId];
+    if (!bill) {
+        alert('未找到账单信息，请刷新页面后重试');
+        return;
+    }
+
+    const formatDateForInput = (rawValue) => {
+        if (!rawValue) {
+            return new Date().toISOString().split('T')[0];
+        }
+
+        const dateObj = new Date(rawValue);
+        if (Number.isNaN(dateObj.getTime())) {
+            if (typeof rawValue === 'string') {
+                const match = rawValue.match(/^\d{4}-\d{2}-\d{2}/);
+                if (match) {
+                    return match[0];
+                }
+            }
+            return new Date().toISOString().split('T')[0];
+        }
+
+        const year = dateObj.getFullYear();
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    document.getElementById('receiveBillId').value = bill.id;
+    document.getElementById('receiveCustomerName').value = bill.customer_name || '';
+    document.getElementById('receiveBillNumber').value = bill.bill_number || '';
+    const periodStartStr = formatDateForInput(bill.period_start);
+    const periodEndStr = formatDateForInput(bill.period_end);
+    document.getElementById('receiveBillPeriod').value = `${periodStartStr} ~ ${periodEndStr}`;
+    document.getElementById('receiveBillAmount').value = '¥' + parseFloat(bill.bill_amount || bill.amount || 0).toFixed(2);
+    document.getElementById('receiveAlreadyPaid').value = '¥' + parseFloat(bill.received_amount || 0).toFixed(2);
+    document.getElementById('receiveRemainingAmount').value = '¥' + parseFloat(bill.remaining_amount || 0).toFixed(2);
+    document.getElementById('receiveAmount').value = parseFloat(bill.remaining_amount || 0).toFixed(2);
+    document.getElementById('receiveAmount').max = parseFloat(bill.remaining_amount || 0).toFixed(2);
+
+    const receiveDateInput = document.getElementById('receiveDate');
+    if (receiveDateInput) {
+        receiveDateInput.value = formatDateForInput(bill.period_start);
+    }
+
+    const discountInput = document.getElementById('receiveDiscountAmount');
+    if (discountInput) {
+        discountInput.value = '0.00';
+    }
+
+
+    // 重置“使用待分配收款”勾选和提示
+    const useUnallocatedCheckbox = document.getElementById('useUnallocated');
+    const unallocatedHint = document.getElementById('unallocatedHint');
+    if (useUnallocatedCheckbox && unallocatedHint) {
+        useUnallocatedCheckbox.checked = true;
+        unallocatedHint.textContent = '待分配收款余额：加载中...';
+
+        // 异步查询该客户在客户消费管理中的待分配收款余额
+        fetch(`/api/rent-management/unallocated/${bill.customer_id}`)
+            .then(res => res.json())
+            .then(unallocatedData => {
+                if (unallocatedData.success && unallocatedData.data) {
+                    const amount = parseFloat(unallocatedData.data.unallocated_amount || 0).toFixed(2);
+                    unallocatedHint.textContent = `待分配收款余额：¥${amount}`;
+                } else {
+                    unallocatedHint.textContent = '待分配收款余额：查询失败';
+                }
+            })
+            .catch(() => {
+                unallocatedHint.textContent = '待分配收款余额：查询失败';
+            });
+    }
+    
+    new bootstrap.Modal(document.getElementById('receivePaymentModal')).show();
+}
+
+
+
+// 确认收款
+function confirmReceive() {
+    const data = {
+        bill_id: document.getElementById('receiveBillId').value,
+        received_amount: document.getElementById('receiveAmount').value,
+        received_date: document.getElementById('receiveDate').value,
+        payment_method: document.getElementById('paymentMethod').value,
+        transaction_no: document.getElementById('transactionNo').value,
+        bank_account: document.getElementById('bankAccount').value,
+        finance_account_code: document.getElementById('financeAccountCode').value,
+        notes: document.getElementById('receiveNotes').value,
+        discount_amount: document.getElementById('receiveDiscountAmount') ? document.getElementById('receiveDiscountAmount').value : 0,
+        use_unallocated: document.getElementById('useUnallocated') ? document.getElementById('useUnallocated').checked : false
+    };
+    
+    if (!data.received_amount || parseFloat(data.received_amount) <= 0) {
+        alert('请输入有效的收款金额');
+        return;
+    }
+    
+    fetch('/api/rent-management/receive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert('收款确认成功！');
+            bootstrap.Modal.getInstance(document.getElementById('receivePaymentModal')).hide();
+            loadReceivableBills();
+            loadReceivedRecords();
+            refreshRentStatistics();
+        } else {
+            alert('收款失败：' + data.message);
+        }
+    })
+    .catch(err => {
+        console.error('收款请求失败:', err);
+        alert('收款请求失败，请稍后重试');
+    });
+}
+
+
+// 刷新顶部统计卡片
+function refreshRentStatistics() {
+    fetch('/api/rent-management/stats')
+        .then(res => res.json())
+        .then(data => {
+            if (!data.success || !data.data) {
+                return;
+            }
+
+            const stats = data.data;
+            const totalReceivableEl = document.getElementById('rentTotalReceivable');
+            const totalOverdueEl = document.getElementById('rentTotalOverdue');
+            const totalBadDebtEl = document.getElementById('rentTotalBadDebt');
+
+            if (totalReceivableEl) {
+                const value = stats.total_receivable ? parseFloat(stats.total_receivable).toFixed(2) : '0.00';
+                totalReceivableEl.textContent = '¥' + value;
+            }
+
+            if (totalOverdueEl) {
+                const value = stats.total_overdue ? parseFloat(stats.total_overdue).toFixed(2) : '0.00';
+                totalOverdueEl.textContent = '¥' + value;
+            }
+
+            if (totalBadDebtEl) {
+                const value = stats.total_bad_debt ? parseFloat(stats.total_bad_debt).toFixed(2) : '0.00';
+                totalBadDebtEl.textContent = '¥' + value;
+            }
+        })
+        .catch(err => {
+            console.error('刷新租金统计失败:', err);
+        });
+}
+
+// 加载实收记录
+function loadReceivedRecords(page = 1) {
+    const keyword = document.getElementById('receivedSearch').value;
+    const startDate = document.getElementById('receivedStartDate').value;
+    const endDate = document.getElementById('receivedEndDate').value;
+    
+    fetch(`/api/rent-management/received?keyword=${encodeURIComponent(keyword)}&start_date=${startDate}&end_date=${endDate}&page=${page}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                renderReceivedTable(data.data, data.pagination);
+            }
+        });
+}
+
+// 渲染实收记录表格
+function renderReceivedTable(records, pagination) {
+    const methodMap = {
+        'cash': '现金', 'bank_transfer': '银行转账', 'alipay': '支付宝',
+        'wechat': '微信', 'check': '支票', 'other': '其他'
+    };
+    
+    let html = `
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>收款记录编号</th>
+                        <th>账单编号</th>
+                        <th>客户名称</th>
+                        <th>收款金额</th>
+                        <th>收款日期</th>
+                        <th>收款方式</th>
+                        <th>操作员</th>
+                        <th>记录时间</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    if (records.length === 0) {
+        html += '<tr><td colspan="8" class="text-center text-muted">暂无数据</td></tr>';
+    } else {
+        records.forEach(record => {
+            html += `
+                <tr>
+                    <td>${record.record_number}</td>
+                    <td>${record.bill_number}</td>
+                    <td>${record.customer_name}</td>
+                    <td class="text-success fw-bold">¥${parseFloat(record.received_amount).toFixed(2)}</td>
+                    <td>${record.received_date}</td>
+                    <td>${methodMap[record.payment_method] || record.payment_method}</td>
+                    <td>${record.operator_name}</td>
+                    <td>${new Date(record.created_at).toLocaleString('zh-CN')}</td>
+                </tr>
+            `;
+        });
+    }
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+        <nav>${renderPagination(pagination, 'loadReceivedRecords')}</nav>
+    `;
+    
+    document.getElementById('receivedTableContainer').innerHTML = html;
+}
+
+// 加载逾期账单
+function loadOverdueBills(page = 1) {
+    const keyword = document.getElementById('overdueSearch').value;
+    
+    fetch(`/api/rent-management/overdue?keyword=${encodeURIComponent(keyword)}&page=${page}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                renderOverdueTable(data.data, data.pagination);
+            }
+        });
+}
+
+// 渲染逾期账单表格
+function renderOverdueTable(bills, pagination) {
+    let html = `
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>账单编号</th>
+                        <th>客户名称</th>
+                        <th>账单金额</th>
+                        <th>未收金额</th>
+                        <th>应收日期</th>
+                        <th>逾期天数</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    if (bills.length === 0) {
+        html += '<tr><td colspan="7" class="text-center text-muted">暂无逾期账单</td></tr>';
+    } else {
+        bills.forEach(bill => {
+            html += `
+                <tr>
+                    <td>${bill.bill_number}</td>
+                    <td>${bill.customer_name}</td>
+                    <td>¥${parseFloat(bill.bill_amount).toFixed(2)}</td>
+                    <td class="text-danger fw-bold">¥${parseFloat(bill.remaining_amount).toFixed(2)}</td>
+                    <td>${bill.due_date}</td>
+                    <td><span class="badge bg-danger">${bill.overdue_days} 天</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-warning" onclick="showApplyBadDebtModal(${bill.id}, '${bill.bill_number}', '${bill.customer_name}', ${bill.overdue_days})">申请坏账</button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+        <nav>${renderPagination(pagination, 'loadOverdueBills')}</nav>
+    `;
+    
+    document.getElementById('overdueTableContainer').innerHTML = html;
+}
+
+// 更新逾期状态
+function updateOverdueStatus() {
+    if (!confirm('确定要更新所有账单的逾期状态吗？')) return;
+    
+    fetch('/api/rent-management/update-overdue-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message + '，影响行数：' + data.affected_rows);
+            loadOverdueBills();
+        } else {
+            alert('更新失败：' + data.message);
+        }
+    });
+}
+
+// 加载坏账列表
+function loadBadDebtBills(page = 1) {
+    const keyword = document.getElementById('badDebtSearch').value;
+    
+    fetch(`/api/rent-management/bad-debt?keyword=${encodeURIComponent(keyword)}&page=${page}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                renderBadDebtTable(data.data, data.pagination);
+            }
+        });
+}
+
+// 渲染坏账表格
+function renderBadDebtTable(bills, pagination) {
+    let html = `
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>账单编号</th>
+                        <th>客户名称</th>
+                        <th>账单金额</th>
+                        <th>认定时间</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    if (bills.length === 0) {
+        html += '<tr><td colspan="4" class="text-center text-muted">暂无坏账</td></tr>';
+    } else {
+        bills.forEach(bill => {
+            html += `
+                <tr>
+                    <td>${bill.bill_number}</td>
+                    <td>${bill.customer_name}</td>
+                    <td>¥${parseFloat(bill.bill_amount).toFixed(2)}</td>
+                    <td>${new Date(bill.updated_at).toLocaleString('zh-CN')}</td>
+                </tr>
+            `;
+        });
+    }
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+        <nav>${renderPagination(pagination, 'loadBadDebtBills')}</nav>
+    `;
+    
+    document.getElementById('badDebtTableContainer').innerHTML = html;
+}
+
+// 切换坏账视图
+function switchBadDebtView(view) {
+    document.querySelectorAll('#bad-debt .nav-link').forEach(link => link.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    if (view === 'list') {
+        document.getElementById('badDebtListView').style.display = 'block';
+        document.getElementById('badDebtApprovalsView').style.display = 'none';
+        loadBadDebtBills();
+    } else {
+        document.getElementById('badDebtListView').style.display = 'none';
+        document.getElementById('badDebtApprovalsView').style.display = 'block';
+        loadBadDebtApprovals();
+    }
+}
+
+// 显示申请坏账模态框
+function showApplyBadDebtModal(billId, billNumber, customerName, overdueDays) {
+    document.getElementById('badDebtBillId').value = billId;
+    document.getElementById('badDebtBillNumber').value = billNumber;
+    document.getElementById('badDebtCustomerName').value = customerName;
+    document.getElementById('badDebtOverdueDays').value = overdueDays + ' 天';
+    
+    new bootstrap.Modal(document.getElementById('applyBadDebtModal')).show();
+}
+
+// 提交坏账申请
+function submitBadDebtApplication() {
+    const data = {
+        bill_id: document.getElementById('badDebtBillId').value,
+        reason: document.getElementById('badDebtReason').value,
+        proof_files: document.getElementById('proofFiles').value
+    };
+    
+    if (!data.reason.trim()) {
+        alert('请填写认定原因');
+        return;
+    }
+    
+    fetch('/api/rent-management/apply-bad-debt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            bootstrap.Modal.getInstance(document.getElementById('applyBadDebtModal')).hide();
+            loadBadDebtApprovals();
+        } else {
+            alert('申请失败：' + data.message);
+        }
+    });
+}
+
+// 加载坏账审批列表
+function loadBadDebtApprovals(page = 1) {
+    const status = document.getElementById('approvalStatus').value;
+    
+    fetch(`/api/rent-management/bad-debt-approvals?status=${status}&page=${page}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                renderApprovalsTable(data.data, data.pagination);
+            }
+        });
+}
+
+// 渲染审批列表
+function renderApprovalsTable(approvals, pagination) {
+    const statusMap = {
+        'pending': '<span class="badge bg-warning">待审批</span>',
+        'approved': '<span class="badge bg-success">已批准</span>',
+        'rejected': '<span class="badge bg-danger">已拒绝</span>'
+    };
+    
+    let html = `
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>账单编号</th>
+                        <th>客户名称</th>
+                        <th>账单金额</th>
+                        <th>逾期天数</th>
+                        <th>申请人</th>
+                        <th>申请时间</th>
+                        <th>审批状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    if (approvals.length === 0) {
+        html += '<tr><td colspan="8" class="text-center text-muted">暂无审批记录</td></tr>';
+    } else {
+        approvals.forEach(approval => {
+            html += `
+                <tr>
+                    <td>${approval.bill_number}</td>
+                    <td>${approval.customer_name}</td>
+                    <td>¥${parseFloat(approval.bill_amount).toFixed(2)}</td>
+                    <td>${approval.overdue_days} 天</td>
+                    <td>${approval.applicant_name}</td>
+                    <td>${new Date(approval.apply_time).toLocaleString('zh-CN')}</td>
+                    <td>${statusMap[approval.approval_status]}</td>
+                    <td>
+                        ${approval.approval_status === 'pending' ? 
+                            `<button class="btn btn-sm btn-success me-1" onclick="approveBadDebt(${approval.id}, 'approve')">批准</button>
+                             <button class="btn btn-sm btn-danger" onclick="approveBadDebt(${approval.id}, 'reject')">拒绝</button>` 
+                            : '-'}
+                    </td>
+                </tr>
+            `;
+        });
+    }
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+        <nav>${renderPagination(pagination, 'loadBadDebtApprovals')}</nav>
+    `;
+    
+    document.getElementById('approvalsTableContainer').innerHTML = html;
+}
+
+// 审批坏账
+function approveBadDebt(approvalId, action) {
+    const actionText = action === 'approve' ? '批准' : '拒绝';
+    const notes = prompt(`请输入${actionText}意见：`);
+    
+    if (notes === null) return;
+    
+    fetch('/api/rent-management/approve-bad-debt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ approval_id: approvalId, action, notes })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert('审批成功');
+            loadBadDebtApprovals();
+            if (action === 'approve') {
+                loadBadDebtBills();
+            }
+        } else {
+            alert('审批失败：' + data.message);
+        }
+    });
+}
+
+// 加载预警列表
+function loadPaymentAlerts(page = 1) {
+    const status = document.getElementById('alertStatus').value;
+    
+    fetch(`/api/rent-management/alerts?status=${status}&page=${page}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                renderAlertsTable(data.data, data.pagination);
+            }
+        });
+}
+
+// 渲染预警表格
+function renderAlertsTable(alerts, pagination) {
+    let html = `
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>账单编号</th>
+                        <th>客户名称</th>
+                        <th>账单金额</th>
+                        <th>应收日期</th>
+                        <th>距到期天数</th>
+                        <th>预警状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    if (alerts.length === 0) {
+        html += '<tr><td colspan="7" class="text-center text-muted">暂无预警</td></tr>';
+    } else {
+        alerts.forEach(alert => {
+            html += `
+                <tr>
+                    <td>${alert.bill_number}</td>
+                    <td>${alert.customer_name}</td>
+                    <td>¥${parseFloat(alert.bill_amount).toFixed(2)}</td>
+                    <td>${alert.due_date}</td>
+                    <td><span class="badge bg-warning">${alert.days_before_due} 天</span></td>
+                    <td>${alert.alert_status === 'active' ? '<span class="badge bg-danger">活动中</span>' : '<span class="badge bg-secondary">已处理</span>'}</td>
+                    <td>
+                        ${alert.alert_status === 'active' ? 
+                            `<button class="btn btn-sm btn-primary" onclick="processAlert(${alert.id})">标记已处理</button>` 
+                            : '-'}
+                    </td>
+                </tr>
+            `;
+        });
+    }
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+        <nav>${renderPagination(pagination, 'loadPaymentAlerts')}</nav>
+    `;
+    
+    document.getElementById('alertsTableContainer').innerHTML = html;
+}
+
+// 生成预警
+function generateAlerts() {
+    fetch('/api/rent-management/generate-alerts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            loadPaymentAlerts();
+        } else {
+            alert('生成预警失败：' + data.message);
+        }
+    });
+}
+
+// 处理预警
+function processAlert(alertId) {
+    fetch(`/api/rent-management/process-alert/${alertId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert('预警已标记为已处理');
+            loadPaymentAlerts();
+        } else {
+            alert('操作失败：' + data.message);
+        }
+    });
+}
+
+// 渲染分页
+function renderPagination(pagination, functionName) {
+    if (!pagination || pagination.totalPages <= 1) return '';
+    
+    let html = '<ul class="pagination justify-content-center">';
+    
+    for (let i = 1; i <= pagination.totalPages; i++) {
+        html += `
+            <li class="page-item ${i === pagination.page ? 'active' : ''}">
+                <a class="page-link" href="#" onclick="${functionName}(${i}); return false;">${i}</a>
+            </li>
+        `;
+    }
+    
+    html += '</ul>';
+    return html;
+}
+</script>
+
+<%- include('../base-footer') %>

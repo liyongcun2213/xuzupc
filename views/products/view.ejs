@@ -1,0 +1,113 @@
+<%- include('../layout') %>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>产品详情</div>
+        <div>
+            <a href="/products" class="btn btn-secondary">返回列表</a>
+            <a href="/products/edit/<%= product.id %>" class="btn btn-primary">编辑产品</a>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <table class="table table-bordered">
+                    <tr>
+                        <th width="30%">产品编号</th>
+                        <td><%= product.product_code || '-' %></td>
+                    </tr>
+                    <tr>
+                        <th>产品名称</th>
+                        <td><%= product.name %></td>
+                    </tr>
+                    <tr>
+                        <th>产品型号</th>
+                        <td><%= product.model_number || '-' %></td>
+                    </tr>
+                    <tr>
+                        <th>产品类别</th>
+                        <td><%= product.category_name %></td>
+                    </tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <table class="table table-bordered">
+                    <tr>
+                        <th width="30%">总采购价</th>
+                        <td>¥<%= (Number(product.total_price) || 0).toFixed(2) %></td>
+                    </tr>
+                    <tr>
+                        <th>日租金</th>
+                        <td>¥<%= (Number(product.calculated_daily_rent) || 0).toFixed(2) %></td>
+                    </tr>
+                    <tr>
+                        <th>月租金</th>
+                        <td>¥<%= (Number(product.calculated_monthly_rent) || 0).toFixed(2) %></td>
+                    </tr>
+                    <tr>
+                        <th>状态</th>
+                        <td>
+                            <% if (product.status === 'active') { %>
+                                <span class="badge bg-success">启用</span>
+                            <% } else { %>
+                                <span class="badge bg-danger">禁用</span>
+                            <% } %>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        
+        <% if (accessories && accessories.length > 0) { %>
+        <h5 class="mt-4 mb-3">产品配置详情</h5>
+        <div class="table-responsive">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>配件类别</th>
+                        <th>配件型号</th>
+                        <th>品牌</th>
+                        <th>单价</th>
+                        <th>数量</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% accessories.forEach(accessory => { %>
+                    <tr>
+                        <td><%= accessory.category_name %></td>
+                        <td><%= accessory.model %></td>
+                        <td><%= accessory.brand %></td>
+                        <td>¥<%= (accessory.unit_price || 0).toFixed(2) %></td>
+                        <td><%= accessory.quantity || 1 %></td>
+                    </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+        <% } %>
+        
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <table class="table table-bordered">
+                    <tr>
+                        <th width="30%">创建时间</th>
+                        <td><%= moment(product.created_at).format('YYYY-MM-DD HH:mm:ss') %></td>
+                    </tr>
+                    <tr>
+                        <th>更新时间</th>
+                        <td><%= moment(product.updated_at).format('YYYY-MM-DD HH:mm:ss') %></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        
+        <% if (product.specifications) { %>
+        <h5 class="mt-4 mb-3">产品规格说明</h5>
+        <div class="card">
+            <div class="card-body">
+                <p><%= product.specifications %></p>
+            </div>
+        </div>
+        <% } %>
+    </div>
+</div>

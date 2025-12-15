@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试客户搜索功能</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>测试客户搜索功能</h2>
+        
+        <div class="card mt-4">
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="orderNumber" class="form-label">订单号</label>
+                    <input type="text" class="form-control" id="orderNumber" name="orderNumber" readonly>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">客户 <span class="text-danger">*</span></label>
+                    <div class="position-relative">
+                        <input type="text" class="form-control" id="customerSearch" 
+                               placeholder="输入客户名称、联系人或电话搜索..." autocomplete="off" required>
+                        <input type="hidden" id="customerId" name="customerId">
+                        <div id="customerDropdown" class="dropdown-menu w-100" 
+                             style="max-height: 300px; overflow-y: auto;">
+                        </div>
+                    </div>
+                    <small class="form-text text-muted">已选择: <span id="selectedCustomerName" class="text-primary">未选择</span></small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 模拟客户数据
+        let allCustomers = [
+            { id: 1, name: '腾讯科技有限公司', contact_person: '张三', phone: '13800138001' },
+            { id: 2, name: '阿里巴巴网络技术有限公司', contact_person: '李四', phone: '13800138002' },
+            { id: 3, name: '百度在线网络技术有限公司', contact_person: '王五', phone: '13800138003' },
+            { id: 4, name: '字节跳动科技有限公司', contact_person: '赵六', phone: '13800138004' },
+            { id: 5, name: '华为技术有限公司', contact_person: '孙七', phone: '13800138005' }
+        ];
+        let selectedCustomer = null;
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('页面加载完成');
+            console.log('客户数据:', allCustomers);
+            
+            // 生成订单编号
+            const today = new Date().toISOString().split('T')[0];
+            const dateStr = today.replace(/-/g, '');
+            const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+            document.getElementById('orderNumber').value = 'DD' + dateStr + random;
+            console.log('订单号已生成:', document.getElementById('orderNumber').value);
+            
+            // 初始化客户搜索
+            initCustomerSearch();
+        });
+
+        // 初始化客户搜索功能
+        function initCustomerSearch() {
+            const searchInput = document.getElementById('customerSearch');
+            const dropdown = document.getElementById('customerDropdown');
+            
+            console.log('初始化客户搜索');
+            
+            // 输入时搜索
+            searchInput.addEventListener('input', function(e) {
+                const searchText = e.target.value.toLowerCase().trim();
+                console.log('搜索文本:', searchText);
+                
+                // 如果为空，显示所有客户
+                if (searchText === '') {
+                    renderCustomerDropdown(allCustomers);
+                    return;
+                }
+                
+                // 过滤客户
+                const filteredCustomers = allCustomers.filter(function(customer) {
+                    const name = (customer.name || '').toLowerCase();
+                    const contact = (customer.contact_person || '').toLowerCase();
+                    const phone = (customer.phone || '').toLowerCase();
+                    return name.includes(searchText) || 
+                           contact.includes(searchText) || 
+                           phone.includes(searchText);
+                });
+                
+                console.log('过滤后客户数量:', filteredCustomers.length);
+                renderCustomerDropdown(filteredCustomers);
+            });
+            
+            // 点击输入框显示所有客户
+            searchInput.addEventListener('focus', function() {
+                console.log('输入框获得焦点');
+                renderCustomerDropdown(allCustomers);
+            });
+            
+            // 点击外部关闭下拉框
+            document.addEventListener('click', function(e) {
+                if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.classList.remove('show');
+                }
+            });
+        }
+
+        // 渲染客户下拉列表
+        function renderCustomerDropdown(customers) {
+            const dropdown = document.getElementById('customerDropdown');
+            console.log('渲染客户列表，数量:', customers.length);
+            
+            if (customers.length === 0) {
+                dropdown.innerHTML = '<div class="dropdown-item text-muted">未找到匹配的客户</div>';
+                dropdown.classList.add('show');
+                return;
+            }
+            
+            let html = '';
+            customers.forEach(function(customer) {
+                html += '<a class="dropdown-item" href="javascript:void(0)" onclick="selectCustomer(' + customer.id + ')">';
+                html += '<div><strong>' + (customer.name || '') + '</strong></div>';
+                html += '<small class="text-muted">';
+                html += (customer.contact_person || '-') + ' | ' + (customer.phone || '-');
+                html += '</small>';
+                html += '</a>';
+            });
+            
+            dropdown.innerHTML = html;
+            dropdown.classList.add('show');
+            console.log('下拉框已显示');
+        }
+
+        // 选择客户
+        function selectCustomer(customerId) {
+            console.log('选择客户ID:', customerId);
+            selectedCustomer = allCustomers.find(function(c) { return c.id === customerId; });
+            
+            if (selectedCustomer) {
+                document.getElementById('customerSearch').value = selectedCustomer.name;
+                document.getElementById('customerId').value = selectedCustomer.id;
+                document.getElementById('selectedCustomerName').textContent = selectedCustomer.name;
+                document.getElementById('customerDropdown').classList.remove('show');
+                console.log('已选择客户:', selectedCustomer.name);
+            }
+        }
+    </script>
+</body>
+</html>

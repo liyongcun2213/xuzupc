@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>创建租赁订单</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/fonts/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://res.wx.qq.com/open/js/jweixin-1.6.0.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f8f9fa;
+            padding-bottom: 80px;
+        }
+        .header-bar {
+            background: linear-gradient(135deg, #0d6efd, #0b5ed7);
+            color: #fff;
+            padding: 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .section-card {
+            background: #fff;
+            margin: 1rem;
+            padding: 1rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .section-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #333;
+        }
+        .device-item {
+            border: 1px solid #e0e0e0;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+            position: relative;
+        }
+        .device-item .remove-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+        }
+        .customer-search-result {
+            border: 1px solid #e0e0e0;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+        }
+        .customer-search-result:hover {
+            background-color: #f8f9fa;
+        }
+        .customer-search-result.selected {
+            background-color: #e7f3ff;
+            border-color: #0d6efd;
+        }
+        .bottom-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #fff;
+            padding: 1rem;
+            box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
+        }
+        .scan-more-btn {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px dashed #0d6efd;
+            background: #f8f9ff;
+            color: #0d6efd;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            pointer-events: auto;
+            position: relative;
+            z-index: 1;
+        }
+        .scan-more-btn:hover {
+            background: #e7f3ff;
+        }
+        .scan-more-btn:active {
+            background: #d0e7ff;
+        }
+        .form-label {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #666;
+            margin-bottom: 0.5rem;
+        }
+        .badge-device-count {
+            background: #0d6efd;
+            color: #fff;
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+        }
+        #reader {
+            width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .scanner-overlay {
+            position: relative;
+        }
+        .scanner-hint {
+            text-align: center;
+            color: #666;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="header-bar">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="mb-0">创建租赁订单</h5>
+                <small>订单号: <span id="orderNumber">生成中...</span></small>
+            </div>
+            <a href="/wechat/device/<%= device.device_code %>" class="btn btn-sm btn-light">
+                <i class="bi bi-x-lg"></i>
+            </a>
+        </div>
+    </div>
+
+    <!-- 租赁设备列表 -->
+    <div class="section-card">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="section-title mb-0">租赁设备 <span class="badge-device-count" id="deviceCount">1</span></div>
+        </div>
+        <div id="deviceList">
+            <div class="device-item" data-device-id="<%= device.id %>">
+                <div class="mb-1">
+                    <strong><%= device.device_code %></strong>
+                </div>
+                <div class="text-muted small">
+                    <%= device.device_name || '-' %>
+                </div>
+                <div class="text-muted small">
+                    <%= device.product_specifications || device.product_code || '未知型号' %>
+                </div>
+            </div>
+        </div>
+        <button type="button" class="scan-more-btn mb-2" id="scanMoreBtn" onclick="scanMoreDevice();">
+            <i class="bi bi-plus-circle me-2"></i>继续扫描添加更多设备
+        </button>
+        <button type="button" class="btn btn-outline-secondary w-100 mt-2" id="manualInputBtn" onclick="manualInputDevice();">
+            <i class="bi bi-keyboard me-2"></i>手动输入设备编号
+        </button>
+    </div>
+
+    <!-- 客户选择 -->
+    <div class="section-card">
+        <div class="section-title">选择客户 <span class="text-danger">*</span></div>
+        <div class="position-relative">
+            <input type="text" class="form-control mb-2" id="customerSearch" placeholder="输入客户名称、联系人或电话搜索..." autocomplete="off">
+            <div id="customerSearchResults" class="list-group position-absolute w-100" style="top: 100%; left: 0; z-index: 1050; max-height: 300px; overflow-y: auto; display: none;"></div>
+        </div>
+        <input type="hidden" id="customerId">
+
+        <div id="selectedCustomerInfo" style="display:none;" class="alert alert-info mt-2">
+            <strong>已选择: </strong><span id="selectedCustomerName"></span>
+        </div>
+    </div>
+
+    <!-- 租赁信息 -->
+    <div class="section-card">
+        <div class="section-title">租赁信息</div>
+        
+        <div class="mb-3">
+            <label class="form-label">起租日期 <span class="text-danger">*</span></label>
+            <input type="date" class="form-control" id="startDate" required>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">合同周期</label>
+            <select class="form-select" id="contractPeriod">
+                <option value="1" selected>1年</option>
+                <option value="2">2年</option>
+                <option value="3">3年</option>
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">付款周期 <span class="text-danger">*</span></label>
+            <select class="form-select" id="paymentCycle">
+                <option value="monthly">月度付款</option>
+                <option value="quarterly" selected>季度付款</option>
+                <option value="yearly">年度付款</option>
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">备注</label>
+            <textarea class="form-control" id="notes" rows="3" placeholder="选填：订单备注信息"></textarea>
+        </div>
+    </div>
+
+    <!-- 底部操作栏 -->
+    <div class="bottom-bar">
+        <button type="button" class="btn btn-primary w-100" onclick="confirmCreateOrder()">
+            <i class="bi bi-check-circle me-2"></i>确认创建订单
+        </button>
+    </div>
+
+    <!-- 扫码模态框 -->
+    <div class="modal fade" id="scanModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">扫描设备二维码</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" onclick="stopScanner()"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info mb-3">
+                        <small>
+                            <strong>提示：</strong>如果摄像头无法启动，请检查：<br>
+                            1. 浏览器是否允许摄像头权限<br>
+                            2. 其他应用是否占用摄像头<br>
+                            3. 或点击下方"手动输入"按钮
+                        </small>
+                    </div>
+                    <div class="scanner-overlay">
+                        <div id="reader"></div>
+                        <div class="scanner-hint">
+                            请将设备上的二维码对准摄像头
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" onclick="manualInputDeviceInModal()">
+                        <i class="bi bi-keyboard"></i> 手动输入
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" onclick="stopScanner()">取消</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // 全局变量
+        var draftDevices = [];
+        var allCustomers = [];
+        var selectedCustomer = null;
+        var html5QrCode = null;
+        var scanModal = null;
+        var isScanning = false;
+    </script>
+
+    
+    <!-- 设备数据单独放一个script标签 -->
+    <script>
+        var deviceData = <%- JSON.stringify({
+            id: device.id,
+            device_code: device.device_code,
+            device_name: device.device_name || '',
+            specifications: device.product_specifications || device.product_code || '未知型号',
+            status: device.status
+        }) %>;
+        console.log('设备数据已设置:', deviceData);
+
+    </script>
+
+    <script>
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('========== DOMContentLoaded 触发 ==========');
+            console.log('设备数据:', deviceData);
+            
+            try {
+                // 在微信环境下预先获取 JS-SDK 配置
+                if (isWeChat() && typeof wx !== 'undefined') {
+                    var currentUrl = window.location.href.split('#')[0];
+                    fetch('/wechat/js-config?url=' + encodeURIComponent(currentUrl))
+                        .then(function (res) { return res.json(); })
+                        .then(function (data) {
+                            if (!data.success || !data.data) {
+                                console.error('获取微信 JS 配置失败:', data.message);
+                                return;
+                            }
+                            var cfg = data.data;
+                            wx.config({
+                                debug: false,
+                                appId: cfg.appId,
+                                timestamp: cfg.timestamp,
+                                nonceStr: cfg.nonceStr,
+                                signature: cfg.signature,
+                                jsApiList: ['scanQRCode']
+                            });
+
+                            wx.ready(function () {
+                                wechatJsReady = true;
+                                console.log('微信 JS-SDK 已就绪');
+                            });
+
+                            wx.error(function (err) {
+                                console.error('wx.config 验证失败:', err);
+                            });
+                        })
+                        .catch(function (err) {
+                            console.error('请求微信 JS 配置出错:', err);
+                        });
+                }
+
+                // 生成订单号
+                generateOrderNumber();
+                console.log('✓ 订单号已生成');
+                
+                // 设置默认起租日期为今天
+                var today = new Date().toISOString().split('T')[0];
+                document.getElementById('startDate').value = today;
+                console.log('✓ 起租日期已设置:', today);
+
+                // 初始化设备列表
+                console.log('开始初始化设备列表...');
+                initDeviceList();
+                console.log('✓ 设备列表已初始化');
+
+                // 初始化客户联想搜索
+                initCustomerAutocomplete();
+                console.log('✓ 客户联想搜索已初始化');
+
+                
+                // 绑定按钮事件
+                var scanMoreBtn = document.getElementById('scanMoreBtn');
+                var manualInputBtn = document.getElementById('manualInputBtn');
+                
+                console.log('scanMoreBtn:', scanMoreBtn);
+                console.log('manualInputBtn:', manualInputBtn);
+                
+                if (scanMoreBtn) {
+                    // 按钮本身已经在 HTML 上绑定了 onclick="scanMoreDevice()"，
+                    // 这里不再重复绑定事件，以避免多次触发和多余提示。
+                    console.log('✓ 扫描按钮已就绪');
+                } else {
+                    console.error('✗ 找不到扫描按钮');
+                }
+                
+                if (manualInputBtn) {
+                    // 同理，手动输入按钮也直接使用 HTML 上的 onclick 处理。
+                    console.log('✓ 手动输入按钮已就绪');
+                } else {
+                    console.error('✗ 找不到手动输入按钮');
+                }
+
+                
+                console.log('========== 页面初始化完成 ==========');
+            } catch (err) {
+                console.error('========== 初始化过程出错 ==========');
+                console.error('错误信息:', err);
+                console.error('错误堆栈:', err.stack);
+                alert('页面初始化失败: ' + err.message);
+            }
+        });
+
+        // 生成订单号
+        function generateOrderNumber() {
+            const now = new Date();
+            const dateStr = now.getFullYear() + 
+                           String(now.getMonth() + 1).padStart(2, '0') + 
+                           String(now.getDate()).padStart(2, '0');
+            const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+            document.getElementById('orderNumber').textContent = `DD${dateStr}${random}`;
+        }
+
+        // 初始化设备列表
+        function initDeviceList() {
+            console.log('========== initDeviceList 开始 ==========');
+            try {
+                if (!deviceData) {
+                    console.error('deviceData 为空');
+                    alert('设备数据未加载，但页面应该已经显示了设备信息');
+                    return;
+                }
+                
+                console.log('设备数据:', deviceData);
+                
+                // 将当前设备加入草稿（用于后续添加更多设备）
+                var firstDevice = {
+                    id: deviceData.id,
+                    device_code: deviceData.device_code,
+                    device_name: deviceData.device_name || '',
+                    specifications: deviceData.specifications || '未知型号',
+                    status: deviceData.status
+                };
+                
+                console.log('第一台设备信息:', firstDevice);
+                
+                // 检查设备状态
+                if (firstDevice.status === 'rented') {
+                    alert('该设备已出租，无法创建租赁订单');
+                    window.location.href = '/wechat/device/' + deviceData.device_code;
+                    return;
+                }
+
+                // 只需要加入数组，不需要重新渲染（HTML已经有了）
+                draftDevices.push(firstDevice);
+                console.log('设备已加入草稿列表, draftDevices:', draftDevices);
+                
+                updateDeviceCount();
+                console.log('设备数量已更新');
+                
+                console.log('========== initDeviceList 完成 ==========');
+            } catch (err) {
+                console.error('========== initDeviceList 失败 ==========');
+                console.error('错误:', err);
+                console.error('错误堆栈:', err.stack);
+                // 不再弹出alert，因为页面已经有设备信息了
+            }
+        }
+
+        // 客户联想搜索（autocomplete）
+        var customerSearchDebounceTimer = null;
+
+        function initCustomerAutocomplete() {
+            var input = document.getElementById('customerSearch');
+            var resultsDiv = document.getElementById('customerSearchResults');
+            var hiddenIdInput = document.getElementById('customerId');
+            var selectedInfoDiv = document.getElementById('selectedCustomerInfo');
+            var selectedNameSpan = document.getElementById('selectedCustomerName');
+
+            if (!input || !resultsDiv) {
+                console.error('找不到客户搜索输入框或结果容器');
+                return;
+            }
+
+            input.addEventListener('input', function () {
+                handleCustomerSearchInput(input, resultsDiv, hiddenIdInput, selectedInfoDiv, selectedNameSpan);
+            });
+
+            input.addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') {
+                    resultsDiv.style.display = 'none';
+                }
+            });
+
+            // 点击页面其他位置时关闭下拉列表
+            document.addEventListener('click', function (e) {
+                if (!input.contains(e.target) && !resultsDiv.contains(e.target)) {
+                    resultsDiv.style.display = 'none';
+                }
+            });
+        }
+
+        function handleCustomerSearchInput(input, resultsDiv, hiddenIdInput, selectedInfoDiv, selectedNameSpan) {
+            var keyword = (input.value || '').trim();
+            clearTimeout(customerSearchDebounceTimer);
+
+            if (keyword.length < 1) {
+                resultsDiv.style.display = 'none';
+                resultsDiv.innerHTML = '';
+                return;
+            }
+
+            customerSearchDebounceTimer = setTimeout(function () {
+                fetch('/api/autocomplete/customers?q=' + encodeURIComponent(keyword) + '&limit=10')
+                    .then(function (response) { return response.json(); })
+                    .then(function (data) {
+                        if (data.success && data.data && data.data.length > 0) {
+                            renderCustomerAutocomplete(data.data, input, resultsDiv, hiddenIdInput, selectedInfoDiv, selectedNameSpan);
+                        } else {
+                            resultsDiv.style.display = 'none';
+                            resultsDiv.innerHTML = '';
+                        }
+                    })
+                    .catch(function (err) {
+                        console.error('客户联想搜索错误:', err);
+                        resultsDiv.style.display = 'none';
+                        resultsDiv.innerHTML = '';
+                    });
+            }, 300);
+        }
+
+        function renderCustomerAutocomplete(results, input, resultsDiv, hiddenIdInput, selectedInfoDiv, selectedNameSpan) {
+            resultsDiv.innerHTML = results.map(function (item) {
+                var label = item.label || item.value || '';
+                var safeName = (item.value || label || '').replace(/"/g, '&quot;');
+                return '<button type="button" class="list-group-item list-group-item-action py-2" data-id="' + item.id + '" data-name="' + safeName + '">' + label + '</button>';
+            }).join('');
+
+            resultsDiv.style.display = 'block';
+
+            var buttons = resultsDiv.querySelectorAll('button');
+            buttons.forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var customerId = parseInt(this.getAttribute('data-id'), 10);
+                    var customerName = this.getAttribute('data-name') || '';
+
+                    selectedCustomer = {
+                        id: customerId,
+                        name: customerName
+                    };
+
+                    if (hiddenIdInput) {
+                        hiddenIdInput.value = customerId;
+                    }
+
+                    input.value = customerName;
+
+                    if (selectedNameSpan && selectedInfoDiv) {
+                        selectedNameSpan.textContent = customerName;
+                        selectedInfoDiv.style.display = 'block';
+                    }
+
+                    resultsDiv.style.display = 'none';
+                });
+            });
+        }
+
+
+        // 微信环境检测
+        function isWeChat() {
+            return /MicroMessenger/i.test((navigator.userAgent || ''));
+        }
+
+        let wechatJsReady = false;
+
+        // 扫码相关变量（上方已有全局变量声明，这里只作为注释）
+        // html5QrCode、scanModal、isScanning 在前面的脚本中已使用 var 声明
+
+        // 继续扫描更多设备
+        function scanMoreDevice() {
+            console.log('========== scanMoreDevice 函数开始执行 ==========');
+
+            // 如果在微信环境且 JS-SDK 已就绪，优先使用 wx.scanQRCode
+            if (isWeChat() && typeof wx !== 'undefined' && wechatJsReady) {
+                wx.scanQRCode({
+                    needResult: 1,
+                    scanType: ['qrCode', 'barCode'],
+                    success: function (res) {
+                        var result = res.resultStr || '';
+                        // 微信可能返回形如 "CODE_128,实际内容" 的格式
+                        if (result.indexOf(',') !== -1) {
+                            result = result.split(',')[1];
+                        }
+                        handleScanResult(result);
+                    },
+                    fail: function (err) {
+                        console.error('微信扫码失败:', err);
+                        alert('微信扫码失败，可以尝试手动输入设备编号');
+                    }
+                });
+                return;
+            }
+
+            // 非微信环境或 JS-SDK 未就绪，回退到原来的摄像头扫码方式
+            try {
+                if (typeof bootstrap === 'undefined') {
+                    alert('Bootstrap 未加载！');
+                    console.error('Bootstrap 未加载');
+                    return;
+                }
+
+                var modalElement = document.getElementById('scanModal');
+                if (!modalElement) {
+                    alert('找不到扫码模态框元素！');
+                    console.error('找不到 scanModal 元素');
+                    return;
+                }
+
+                if (!scanModal) {
+                    scanModal = new bootstrap.Modal(modalElement, {
+                        backdrop: 'static',
+                        keyboard: false
+                    });
+                }
+
+                scanModal.show();
+
+                setTimeout(function () {
+                    startScanner();
+                }, 500);
+            } catch (err) {
+                console.error('打开扫码窗口失败:', err);
+                alert('打开扫码窗口失败: ' + err.message);
+            }
+        }
+
+        // 启动扫码器
+        function startScanner() {
+            if (isScanning) return;
+            
+            if (!html5QrCode) {
+                html5QrCode = new Html5Qrcode("reader");
+            }
+
+            const config = { 
+                fps: 10,
+                qrbox: { width: 250, height: 250 },
+                aspectRatio: 1.0
+            };
+
+            // 先尝试获取摄像头列表
+            Html5Qrcode.getCameras().then(devices => {
+                if (devices && devices.length) {
+                    console.log("检测到摄像头:", devices.length, "个");
+                    
+                    // 优先使用后置摄像头
+                    let cameraId = devices[devices.length - 1].id;
+                    
+                    html5QrCode.start(
+                        cameraId,
+                        config,
+                        onScanSuccess,
+                        onScanError
+                    ).then(() => {
+                        isScanning = true;
+                        console.log("扫码器已启动");
+                    }).catch(err => {
+                        console.error("启动扫码器失败:", err);
+                        handleScannerError(err);
+                    });
+                } else {
+                    alert("未检测到摄像头");
+                }
+            }).catch(err => {
+                console.error("获取摄像头列表失败:", err);
+                handleScannerError(err);
+            });
+        }
+
+        // 处理扫码器错误
+        function handleScannerError(err) {
+            var errorMsg = '无法启动摄像头\n\n';
+            
+            if (err.name === 'NotAllowedError') {
+                errorMsg += '原因：摄像头权限被拒绝\n\n';
+                errorMsg += '解决方法：\n';
+                errorMsg += '1. 点击浏览器地址栏左侧的锁图标\n';
+                errorMsg += '2. 找到“摄像头”权限\n';
+                errorMsg += '3. 设置为“允许”\n';
+                errorMsg += '4. 刷新页面重试';
+            } else if (err.name === 'NotFoundError') {
+                errorMsg += '原因：未检测到摄像头设备';
+            } else if (err.name === 'NotReadableError') {
+                errorMsg += '原因：摄像头正被其他应用占用\n\n';
+                errorMsg += '解决方法：关闭其他使用摄像头的应用';
+            } else if (err.name === 'NotSupportedError' || window.location.protocol !== 'https:') {
+                errorMsg += '原因：浏览器需要 HTTPS 才能访问摄像头\n\n';
+                errorMsg += '解决方法：\n';
+                errorMsg += '1. 改用 Chrome/Safari 浏览器\n';
+                errorMsg += '2. 或手动输入设备编号';
+                
+                // 提供手动输入选项
+                if (confirm(errorMsg + '\n\n是否改用手动输入设备编号？')) {
+                    if (scanModal) {
+                        scanModal.hide();
+                    }
+                    manualInputDevice();
+                    return;
+                }
+            } else {
+                errorMsg += '错误信息：' + err.message + '\n\n';
+                errorMsg += '建议：尝试使用 Chrome 或 Safari 浏览器';
+            }
+            
+            alert(errorMsg);
+        }
+
+        // 手动输入设备编号（在模态框内）
+        function manualInputDeviceInModal() {
+            stopScanner();
+            scanModal.hide();
+            manualInputDevice();
+        }
+
+        // 手动输入设备编号
+        function manualInputDevice() {
+            const deviceCode = prompt("请输入设备编号（例如：PC0001-001）：");
+            
+            if (!deviceCode || deviceCode.trim() === '') {
+                return;
+            }
+
+            const trimmedCode = deviceCode.trim();
+
+            // 检查是否已添加
+            if (draftDevices.find(d => d.device_code === trimmedCode)) {
+                alert('该设备已在订单中');
+                return;
+            }
+
+            // 从服务器获取设备信息
+            fetch(`/api/device/${trimmedCode}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const device = data.device;
+                        
+                        // 检查设备状态
+                        if (device.status === 'rented') {
+                            alert(`设备 ${trimmedCode} 已出租，无法添加到订单`);
+                            return;
+                        }
+
+                        // 添加到设备列表
+                        draftDevices.push({
+                            id: device.id,
+                            device_code: device.device_code,
+                            device_name: device.device_name || '',
+                            specifications: device.product_specifications || device.product_code || '未知型号',
+                            status: device.status
+                        });
+
+                        // 更新设备列表显示
+                        renderDeviceList();
+                        updateDeviceCount();
+                        
+                        alert(`设备 ${trimmedCode} 已成功添加到订单`);
+                    } else {
+                        alert('设备不存在或查询失败');
+                    }
+                })
+                .catch(err => {
+                    console.error('获取设备信息失败:', err);
+                    alert('获取设备信息失败，请重试');
+                });
+        }
+
+        // 停止扫码器
+        function stopScanner() {
+            if (html5QrCode && isScanning) {
+                html5QrCode.stop().then(() => {
+                    isScanning = false;
+                    console.log("扫码器已停止");
+                }).catch(err => {
+                    console.error("停止扫码器失败:", err);
+                });
+            }
+        }
+
+        // 统一处理扫码结果（微信 / html5-qrcode 共用）
+        function handleScanResult(rawText) {
+            console.log('处理扫码结果:', rawText);
+
+            if (!rawText) {
+                alert('无效的设备二维码');
+                if (scanModal) {
+                    scanModal.hide();
+                }
+                return;
+            }
+
+            var decodedText = String(rawText);
+
+            // 从二维码内容中解析设备编号
+            var deviceCode = '';
+            if (decodedText.indexOf('/wechat/device/') !== -1) {
+                var parts = decodedText.split('/wechat/device/');
+                if (parts.length > 1) {
+                    deviceCode = parts[1].split('?')[0];
+                }
+            } else {
+                deviceCode = decodedText;
+            }
+
+            if (!deviceCode) {
+                alert('无效的设备二维码');
+                if (scanModal) {
+                    scanModal.hide();
+                }
+                return;
+            }
+
+            console.log('提取的设备编号:', deviceCode);
+
+            if (draftDevices.find(function (d) { return d.device_code === deviceCode; })) {
+                alert('该设备已在订单中');
+                if (scanModal) {
+                    scanModal.hide();
+                }
+                return;
+            }
+
+            fetch('/api/device/' + encodeURIComponent(deviceCode))
+                .then(function (response) { return response.json(); })
+                .then(function (data) {
+                    if (data.success) {
+                        var device = data.device;
+
+                        if (device.status === 'rented') {
+                            alert('设备 ' + deviceCode + ' 已出租，无法添加到订单');
+                            if (scanModal) {
+                                scanModal.hide();
+                            }
+                            return;
+                        }
+
+                        draftDevices.push({
+                            id: device.id,
+                            device_code: device.device_code,
+                            device_name: device.device_name || '',
+                            specifications: device.product_specifications || device.product_code || '未知型号',
+                            status: device.status
+                        });
+
+                        renderDeviceList();
+                        updateDeviceCount();
+
+                        if (scanModal) {
+                            scanModal.hide();
+                        }
+
+                        alert('设备 ' + deviceCode + ' 已成功添加到订单');
+                    } else {
+                        alert('设备不存在或查询失败');
+                        if (scanModal) {
+                            scanModal.hide();
+                        }
+                    }
+                })
+                .catch(function (err) {
+                    console.error('获取设备信息失败:', err);
+                    alert('获取设备信息失败，请重试');
+                    if (scanModal) {
+                        scanModal.hide();
+                    }
+                });
+        }
+
+        // 扫码成功回调（摄像头扫码时使用）
+        function onScanSuccess(decodedText, decodedResult) {
+            console.log('扫码成功:', decodedText);
+            stopScanner();
+            handleScanResult(decodedText);
+        }
+
+        // 扫码错误回调
+        function onScanError(errorMessage) {
+            // 扫码过程中的常规错误，不需要处理
+        }
+
+        // 渲染设备列表
+        function renderDeviceList() {
+            console.log('========== renderDeviceList 开始 ==========');
+            console.log('draftDevices:', draftDevices);
+            
+            var deviceListDiv = document.getElementById('deviceList');
+            if (!deviceListDiv) {
+                console.error('找不到 deviceList 元素');
+                return;
+            }
+            
+            var html = '';
+            
+            for (var i = 0; i < draftDevices.length; i++) {
+                var device = draftDevices[i];
+                console.log('渲染设备 ' + i + ':', device);
+                
+                html += '<div class="device-item" data-device-id="' + device.id + '">';
+                if (i > 0) {
+                    html += '<button type="button" class="btn btn-sm btn-outline-danger remove-btn" onclick="removeDevice(' + i + ')"><i class="bi bi-x"></i></button>';
+                }
+                html += '<div class="mb-1"><strong>' + device.device_code + '</strong></div>';
+                html += '<div class="text-muted small">' + (device.device_name || '-') + '</div>';
+                html += '<div class="text-muted small">' + (device.specifications || '未知型号') + '</div>';
+                html += '</div>';
+            }
+            
+            console.log('生成的HTML:', html);
+            deviceListDiv.innerHTML = html;
+            console.log('========== renderDeviceList 完成 ==========');
+        }
+
+        // 移除设备
+        function removeDevice(index) {
+            if (index === 0) {
+                alert('第一台设备无法移除');
+                return;
+            }
+            
+            if (confirm('确定移除该设备？')) {
+                draftDevices.splice(index, 1);
+                renderDeviceList();
+                updateDeviceCount();
+            }
+        }
+
+        // 更新设备数量
+        function updateDeviceCount() {
+            document.getElementById('deviceCount').textContent = draftDevices.length;
+        }
+
+        // 确认创建订单
+        function confirmCreateOrder() {
+            // 验证必填项
+            if (!selectedCustomer) {
+                alert('请选择客户');
+                return;
+            }
+
+            const startDate = document.getElementById('startDate').value;
+            if (!startDate) {
+                alert('请选择起租日期');
+                return;
+            }
+
+            if (draftDevices.length === 0) {
+                alert('请至少添加一台设备');
+                return;
+            }
+
+            // 确认提示
+            if (!confirm(`确认创建订单？\n客户：${selectedCustomer.name}\n设备数量：${draftDevices.length}台`)) {
+                return;
+            }
+
+            // 计算结束日期（起租日期 + 合同周期年数）
+            const contractPeriod = parseInt(document.getElementById('contractPeriod').value);
+            const endDate = new Date(startDate);
+            endDate.setFullYear(endDate.getFullYear() + contractPeriod);
+            const endDateStr = endDate.toISOString().split('T')[0];
+
+            // 准备订单数据
+            const orderData = {
+                orderNumber: document.getElementById('orderNumber').textContent,
+                orderDate: new Date().toISOString().split('T')[0],
+                customerId: selectedCustomer.id,
+                startDate: startDate,
+                endDate: endDateStr,
+                paymentCycle: document.getElementById('paymentCycle').value,
+                contractPeriod: contractPeriod,
+                notes: document.getElementById('notes').value,
+                deviceItems: draftDevices.map(d => ({
+                    deviceId: d.id,
+                    deviceCode: d.device_code,
+                    specifications: d.specifications,
+                    quantity: 1,
+                    dailyRate: 0,  // 这里可以从产品表中获取
+                    monthlyRate: 0  // 这里可以从产品表中获取
+                }))
+            };
+
+            console.log('提交订单数据:', orderData);
+
+            // 提交订单
+            fetch('/mobile-rental/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(orderData)
+            })
+            .then(response => response.json())
+            .then(function(data) {
+                if (data.success) {
+                    alert('订单创建成功！');
+                    window.location.href = '/wechat/device/' + deviceData.device_code;
+                } else {
+                    alert('创建失败：' + (data.message || '未知错误'));
+                }
+            })
+            .catch(function(error) {
+                console.error('请求错误:', error);
+                alert('创建失败，请稍后重试');
+            });
+        }
+    </script>
+</body>
+</html>

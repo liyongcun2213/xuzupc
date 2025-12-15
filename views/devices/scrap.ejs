@@ -1,0 +1,115 @@
+<%- include('../layout') %>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5>设备报废 - <%= device.device_code %></h5>
+        <div>
+            <a href="/devices/view/<%= device.device_code %>" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> 返回设备详情
+            </a>
+            <a href="/devices" class="btn btn-outline-secondary ms-2">
+                返回设备列表
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="alert alert-warning">
+            <strong>操作说明：</strong>
+            选中“报废”复选框的配件将<strong>直接报废</strong>，不再返回库存；
+            未选中的配件将从设备中拆卸并<strong>退回对应采购批次库存</strong>。
+        </div>
+
+        <form method="post" action="/devices/scrap/<%= device.device_code %>" id="scrapForm">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th style="width: 60px;" class="text-center">
+                                <input type="checkbox" id="selectAllScrap"> 全选报废
+                            </th>
+                            <th>配件类别</th>
+                            <th>配件名称</th>
+                            <th>品牌型号</th>
+                            <th>批次号</th>
+                            <th class="text-center">数量</th>
+                            <th class="text-end">采购单价 (¥)</th>
+                            <th class="text-end">采购小计 (¥)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% if (assemblies && assemblies.length > 0) { %>
+                            <% assemblies.forEach(function(row) { 
+                                const qty = row.quantity || 0;
+                                const price = parseFloat(row.purchase_price || 0) || 0;
+                                const subtotal = qty * price;
+                            %>
+                            <tr>
+                                <td class="text-center">
+                                    <input type="checkbox" class="scrap-checkbox" name="scrapAssemblyIds" value="<%= row.assembly_id %>">
+                                </td>
+                                <td><%= row.category_name || '-' %></td>
+                                <td><%= row.accessory_name || '-' %></td>
+                                <td>
+                                    <%= row.brand || '' %>
+                                    <% if (row.model) { %>
+                                        <%= row.brand ? ' ' : '' %><%= row.model %>
+                                    <% } %>
+                                </td>
+                                <td>
+                                    <% if (row.batch_unique_id || row.unique_batch_id) { %>
+                                        <span class="badge bg-secondary"><%= row.batch_unique_id || row.unique_batch_id %></span>
+                                    <% } else { %>
+                                        -
+                                    <% } %>
+                                </td>
+                                <td class="text-center"><%= qty %></td>
+                                <td class="text-end">¥<%= price.toFixed(2) %></td>
+                                <td class="text-end">¥<%= subtotal.toFixed(2) %></td>
+                            </tr>
+                            <% }) %>
+                        <% } else { %>
+                            <tr>
+                                <td colspan="8" class="text-center text-muted">该设备暂无配件记录</td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="mt-3 d-flex justify-content-between align-items-center">
+                <div class="text-muted small">
+                    说明：报废操作将把设备状态标记为<strong>退役/报废</strong>，无法直接恢复；如需修改，请联系管理员手工调整。
+                </div>
+                <div>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-exclamation-triangle"></i> 确认报废
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const selectAll = document.getElementById('selectAllScrap');
+        const checkboxes = document.querySelectorAll('.scrap-checkbox');
+        const scrapForm = document.getElementById('scrapForm');
+
+        if (selectAll) {
+            selectAll.addEventListener('change', function () {
+                checkboxes.forEach(function (cb) {
+                    cb.checked = selectAll.checked;
+                });
+            });
+        }
+
+        if (scrapForm) {
+            scrapForm.addEventListener('submit', function (e) {
+                if (!confirm('确定要执行报废操作吗？\n选中的配件将直接报废，未选中的配件会退回库存。')) {
+                    e.preventDefault();
+                }
+            });
+        }
+    });
+</script>

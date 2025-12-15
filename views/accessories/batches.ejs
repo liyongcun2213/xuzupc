@@ -1,0 +1,101 @@
+<%- include('../layout') %>
+
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5>配件批次管理 - <%= accessory.name %></h5>
+    <a href="/accessories/view/<%= accessory.id %>" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left"></i> 返回配件详情
+    </a>
+  </div>
+  <div class="card-body">
+    <div class="row mb-3">
+      <div class="col-md-4">
+        <p><strong>类别：</strong><%= accessory.category_name || '-' %></p>
+      </div>
+      <div class="col-md-4">
+        <p><strong>品牌：</strong><%= accessory.brand || '-' %></p>
+      </div>
+      <div class="col-md-4">
+        <p><strong>型号：</strong><%= accessory.model || '-' %></p>
+      </div>
+    </div>
+
+    <div class="alert alert-info">
+      当前页面主要用于查看批次记录。新采购建议通过“添加配件”或后续的采购流程完成。
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-hover align-middle">
+        <thead>
+          <tr>
+            <th>批次号</th>
+            <th>采购日期</th>
+            <th>采购单价</th>
+            <th>采购数量</th>
+            <th>剩余数量</th>
+            <th>报废数量</th>
+            <th>供应商</th>
+            <th>状态</th>
+            <th>备注</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (batches && batches.length > 0) { %>
+            <% batches.forEach(batch => { %>
+              <tr>
+                <td><%= batch.batch_number %></td>
+                <td><%= moment(batch.purchase_date).format('YYYY-MM-DD') %></td>
+                <td>¥<%= (batch.purchase_price || 0).toFixed(2) %></td>
+                <td><%= batch.quantity %></td>
+                <td><%= batch.remaining_quantity %></td>
+                <td>
+                  <% const scrappedQty = batch.scrapped_quantity || 0; %>
+                  <% if (scrappedQty > 0) { %>
+                    <span class="text-danger fw-bold"><%= scrappedQty %></span>
+                  <% } else { %>
+                    <span class="text-muted">0</span>
+                  <% } %>
+                </td>
+                <td><%= batch.supplier_name || '-' %></td>
+                <td>
+                  <% 
+                  let statusText = '';
+                  let statusClass = '';
+                  const status = batch.batch_status || batch.all_statuses;
+                  if (status) {
+                    if (status.includes('exhausted')) {
+                      statusText = '已用完';
+                      statusClass = 'bg-secondary';
+                    } else if (status.includes('in_use')) {
+                      statusText = '使用中';
+                      statusClass = 'bg-info';
+                    } else if (status.includes('in_stock')) {
+                      statusText = '在库';
+                      statusClass = 'bg-success';
+                    }
+                  }
+                  %>
+                  <% if (statusText) { %>
+                    <span class="badge <%= statusClass %>"><%= statusText %></span>
+                  <% } else { %>
+                    <span class="badge bg-secondary">-</span>
+                  <% } %>
+                  <% if (scrappedQty > 0) { %>
+                    <span class="badge bg-danger ms-1">含报废</span>
+                  <% } %>
+                </td>
+                <td><%= batch.notes || '-' %></td>
+              </tr>
+            <% }) %>
+          <% } else { %>
+            <tr>
+              <td colspan="9" class="text-center text-muted">暂无批次记录</td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

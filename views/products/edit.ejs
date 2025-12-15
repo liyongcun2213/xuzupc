@@ -1,0 +1,400 @@
+<%- include('../layout') %>
+
+<div class="card">
+    <div class="card-header">
+        编辑产品
+    </div>
+    <div class="card-body">
+        <form action="/products/edit/<%= product.id %>" method="post" id="productForm">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="name" class="form-label">产品名称 <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="name" name="name" value="<%= product.name %>" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="category_id" class="form-label">产品类别 <span class="text-danger">*</span></label>
+                    <select class="form-select" id="category_id" name="category_id" required>
+                        <option value="">请选择类别</option>
+                        <% categories.forEach(category => { %>
+                        <option value="<%= category.id %>" <%= product.category_id == category.id ? 'selected' : '' %>><%= category.name %></option>
+                        <% }) %>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- 电脑主机配置部分 -->
+            <div id="computerConfig" style="<%= categoryMap && categoryMap['电脑主机'] && product.category_id == categoryMap['电脑主机'] ? 'display:block;' : 'display:none;' %>">
+                <hr>
+                <h5>电脑主机配置</h5>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="cpu" class="form-label">CPU</label>
+                        <select class="form-select cpu-select" name="cpu">
+                            <option value="">请选择CPU</option>
+                            <% cpuList.forEach(item => { %>
+                            <option value="<%= item.id %>" data-price="<%= item.unit_price || item.purchase_price || 0 %>" 
+                                <%= productAccessories.find(acc => acc.accessory_id == item.id && acc.category_name === 'CPU') ? 'selected' : '' %>>
+                                <%= item.name %> - <%= item.brand %> (¥<%= item.unit_price || item.purchase_price || 0 %>)
+                            </option>
+                            <% }) %>
+                        </select>
+                        <small class="text-muted">CPU价格: <span class="cpu-price">¥0.00</span></small>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="cooler" class="form-label">散热器</label>
+                        <select class="form-select cooler-select" name="cooler">
+                            <option value="">请选择散热器</option>
+                            <% coolerList.forEach(item => { %>
+                            <option value="<%= item.id %>" data-price="<%= item.unit_price %>"
+                                <%= productAccessories.find(acc => acc.accessory_id == item.id && acc.category_name === '散热器') ? 'selected' : '' %>>
+                                <%= item.name %> - <%= item.brand %> (¥<%= item.unit_price %>)
+                            </option>
+                            <% }) %>
+                        </select>
+                        <small class="text-muted">散热器价格: <span class="cooler-price">¥0.00</span></small>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="motherboard" class="form-label">主板</label>
+                        <select class="form-select motherboard-select" name="motherboard">
+                            <option value="">请选择主板</option>
+                            <% motherboardList.forEach(item => { %>
+                            <option value="<%= item.id %>" data-price="<%= item.unit_price %>"
+                                <%= productAccessories.find(acc => acc.accessory_id == item.id && acc.category_name === '主板') ? 'selected' : '' %>>
+                                <%= item.name %> - <%= item.brand %> (¥<%= item.unit_price %>)
+                            </option>
+                            <% }) %>
+                        </select>
+                        <small class="text-muted">主板价格: <span class="motherboard-price">¥0.00</span></small>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="memory" class="form-label">内存</label>
+                        <select class="form-select memory-select" name="memory">
+                            <option value="">请选择内存</option>
+                            <% memoryList.forEach(item => { %>
+                            <option value="<%= item.id %>" data-price="<%= item.unit_price %>"
+                                <%= productAccessories.find(acc => acc.accessory_id == item.id && acc.category_name === '内存') ? 'selected' : '' %>>
+                                <%= item.name %> - <%= item.brand %> (¥<%= item.unit_price %>)
+                            </option>
+                            <% }) %>
+                        </select>
+                        <small class="text-muted">内存价格: <span class="memory-price">¥0.00</span></small>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="storage" class="form-label">硬盘</label>
+                        <select class="form-select storage-select" name="storage">
+                            <option value="">请选择硬盘</option>
+                            <% storageList.forEach(item => { %>
+                            <option value="<%= item.id %>" data-price="<%= item.unit_price %>"
+                                <%= productAccessories.find(acc => acc.accessory_id == item.id && acc.category_name === '硬盘') ? 'selected' : '' %>>
+                                <%= item.name %> - <%= item.brand %> (¥<%= item.unit_price %>)
+                            </option>
+                            <% }) %>
+                        </select>
+                        <small class="text-muted">硬盘价格: <span class="storage-price">¥0.00</span></small>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="graphics" class="form-label">显卡</label>
+                        <select class="form-select graphics-select" name="graphics">
+                            <option value="">请选择显卡</option>
+                            <% graphicsList.forEach(item => { %>
+                            <option value="<%= item.id %>" data-price="<%= item.unit_price %>"
+                                <%= productAccessories.find(acc => acc.accessory_id == item.id && acc.category_name === '显卡') ? 'selected' : '' %>>
+                                <%= item.name %> - <%= item.brand %> (¥<%= item.unit_price %>)
+                            </option>
+                            <% }) %>
+                        </select>
+                        <small class="text-muted">显卡价格: <span class="graphics-price">¥0.00</span></small>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="case" class="form-label">机箱</label>
+                        <select class="form-select case-select" name="case">
+                            <option value="">请选择机箱</option>
+                            <% caseList.forEach(item => { %>
+                            <option value="<%= item.id %>" data-price="<%= item.unit_price %>"
+                                <%= productAccessories.find(acc => acc.accessory_id == item.id && acc.category_name === '机箱') ? 'selected' : '' %>>
+                                <%= item.name %> - <%= item.brand %> (¥<%= item.unit_price %>)
+                            </option>
+                            <% }) %>
+                        </select>
+                        <small class="text-muted">机箱价格: <span class="case-price">¥0.00</span></small>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="power" class="form-label">电源</label>
+                        <select class="form-select power-select" name="power">
+                            <option value="">请选择电源</option>
+                            <% powerList.forEach(item => { %>
+                            <option value="<%= item.id %>" data-price="<%= item.unit_price %>"
+                                <%= productAccessories.find(acc => acc.accessory_id == item.id && acc.category_name === '电源') ? 'selected' : '' %>>
+                                <%= item.name %> - <%= item.brand %> (¥<%= item.unit_price %>)
+                            </option>
+                            <% }) %>
+                        </select>
+                        <small class="text-muted">电源价格: <span class="power-price">¥0.00</span></small>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="monitor" class="form-label">显示器</label>
+                        <select class="form-select monitor-select" name="monitor">
+                            <option value="">请选择显示器</option>
+                            <% monitorList.forEach(item => { %>
+                            <option value="<%= item.id %>" data-price="<%= item.unit_price %>"
+                                <%= productAccessories.find(acc => acc.accessory_id == item.id && acc.category_name === '显示器') ? 'selected' : '' %>>
+                                <%= item.name %> - <%= item.brand %> (¥<%= item.unit_price %>)
+                            </option>
+                            <% }) %>
+                        </select>
+                        <small class="text-muted">显示器价格: <span class="monitor-price">¥0.00</span></small>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-12">
+                        <div class="alert alert-info">
+                            <strong>总价计算：</strong> 
+                            <span id="totalPrice">¥<%= product.total_price || '0.00' %></span> | 
+                            <strong>日租金建议：</strong> 
+                            <span id="dailyRent">¥<%= product.rental_price_per_day || '0.00' %></span> | 
+                            <strong>月租金建议：</strong> 
+                            <span id="monthlyRent">¥<%= product.rental_price_per_month || '0.00' %></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 打印机配置部分 -->
+            <div id="printerConfig" style="<%= categoryMap && categoryMap['打印机'] && product.category_id == categoryMap['打印机'] ? 'display:block;' : 'display:none;' %>">
+                <hr>
+                <h5>打印机配置</h5>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="brand" class="form-label">品牌 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="brand" name="brand" value="<%= product.brand || '' %>">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="model" class="form-label">型号 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="model" name="model" value="<%= product.model || '' %>">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="printer_type" class="form-label">类型 <span class="text-danger">*</span></label>
+                        <select class="form-select" id="printer_type" name="printer_type">
+                            <option value="">请选择打印机类型</option>
+                            <option value="激光打印机" <%= product.printer_type === '激光打印机' ? 'selected' : '' %>>激光打印机</option>
+                            <option value="喷墨打印机" <%= product.printer_type === '喷墨打印机' ? 'selected' : '' %>>喷墨打印机</option>
+                            <option value="针式打印机" <%= product.printer_type === '针式打印机' ? 'selected' : '' %>>针式打印机</option>
+                            <option value="热敏打印机" <%= product.printer_type === '热敏打印机' ? 'selected' : '' %>>热敏打印机</option>
+                            <option value="多功能一体机" <%= product.printer_type === '多功能一体机' ? 'selected' : '' %>>多功能一体机</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="purchase_price" class="form-label">采购价格 <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" min="0" class="form-control" id="purchase_price" name="purchase_price" 
+                               value="<%= product.purchase_price || product.total_price || '0' %>" required>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-12">
+                        <div class="alert alert-info">
+                            <strong>日租金建议：</strong> 
+                            <span id="printerDailyRent">¥<%= product.rental_price_per_day || '0.00' %></span> | 
+                            <strong>月租金建议：</strong> 
+                            <span id="printerMonthlyRent">¥<%= product.rental_price_per_month || '0.00' %></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 通用字段 -->
+            <div class="row mt-3">
+                <div class="col-md-12 mb-3">
+                    <label for="specifications" class="form-label">规格说明</label>
+                    <textarea class="form-control" id="specifications" name="specifications" rows="3"><%= product.specifications || '' %></textarea>
+                </div>
+            </div>
+            
+            <!-- 隐藏输入框 -->
+            <input type="hidden" id="total_price" name="total_price" value="<%= product.total_price || '0' %>">
+            <input type="hidden" id="calculated_daily_rent" name="calculated_daily_rent" value="<%= product.rental_price_per_day || '0' %>">
+            <input type="hidden" id="calculated_monthly_rent" name="calculated_monthly_rent" value="<%= product.rental_price_per_month || '0' %>">
+            
+            <div class="d-flex justify-content-end">
+                <a href="/products" class="btn btn-secondary me-2">取消</a>
+                <button type="submit" class="btn btn-primary">保存</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+</main>
+</div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 类别映射表（从服务器获取）
+    const categoryMap = <%- JSON.stringify(categoryMap) %>;
+    
+    const categorySelect = document.getElementById('category_id');
+    const computerConfig = document.getElementById('computerConfig');
+    const printerConfig = document.getElementById('printerConfig');
+    
+    // 配件价格元素
+    const cpuPrice = document.querySelector('.cpu-price');
+    const coolerPrice = document.querySelector('.cooler-price');
+    const motherboardPrice = document.querySelector('.motherboard-price');
+    const memoryPrice = document.querySelector('.memory-price');
+    const storagePrice = document.querySelector('.storage-price');
+    const graphicsPrice = document.querySelector('.graphics-price');
+    const casePrice = document.querySelector('.case-price');
+    const powerPrice = document.querySelector('.power-price');
+    const monitorPrice = document.querySelector('.monitor-price');
+    
+    // 总价和租金元素
+    const totalPrice = document.getElementById('totalPrice');
+    const dailyRent = document.getElementById('dailyRent');
+    const monthlyRent = document.getElementById('monthlyRent');
+    
+    // 隐藏输入框
+    const totalPriceInput = document.getElementById('total_price');
+    const dailyRentInput = document.getElementById('calculated_daily_rent');
+    const monthlyRentInput = document.getElementById('calculated_monthly_rent');
+    
+    // 打印机价格元素
+    const printerPurchasePrice = document.getElementById('purchase_price');
+    const printerDailyRent = document.getElementById('printerDailyRent');
+    const printerMonthlyRent = document.getElementById('printerMonthlyRent');
+    
+    // 初始化价格显示
+    initializePriceDisplays();
+    
+    // 监听类别变化
+    categorySelect.addEventListener('change', function() {
+        const categoryId = this.value;
+        
+        // 隐藏所有配置区域
+        computerConfig.style.display = 'none';
+        printerConfig.style.display = 'none';
+        
+        // 根据类别名称显示相应配置
+        if (categoryId == categoryMap['电脑主机']) { // 电脑主机
+            computerConfig.style.display = 'block';
+            calculateComputerTotal();
+        } else if (categoryId == categoryMap['打印机']) { // 打印机
+            printerConfig.style.display = 'block';
+            calculatePrinterRent();
+        }
+    });
+    
+    // 初始化价格显示
+    function initializePriceDisplays() {
+        // 设置电脑配件价格
+        document.querySelectorAll('.cpu-select, .cooler-select, .motherboard-select, .memory-select, .storage-select, .graphics-select, .case-select, .power-select, .monitor-select').forEach(select => {
+            const priceDisplay = select.parentElement.querySelector('.text-muted span');
+            if (priceDisplay && select.value) {
+                const price = parseFloat(select.options[select.selectedIndex].dataset.price) || 0;
+                priceDisplay.textContent = '¥' + price.toFixed(2);
+            }
+        });
+    }
+    
+    // 计算总价和租金函数
+    function calculateComputerTotal() {
+        let total = 0;
+        
+        // 获取各配件价格
+        const cpuSelect = document.querySelector('.cpu-select');
+        const coolerSelect = document.querySelector('.cooler-select');
+        const motherboardSelect = document.querySelector('.motherboard-select');
+        const memorySelect = document.querySelector('.memory-select');
+        const storageSelect = document.querySelector('.storage-select');
+        const graphicsSelect = document.querySelector('.graphics-select');
+        const caseSelect = document.querySelector('.case-select');
+        const powerSelect = document.querySelector('.power-select');
+        const monitorSelect = document.querySelector('.monitor-select');
+        
+        if (cpuSelect.value) {
+            total += parseFloat(cpuSelect.options[cpuSelect.selectedIndex].dataset.price) || 0;
+            cpuPrice.textContent = '¥' + (parseFloat(cpuSelect.options[cpuSelect.selectedIndex].dataset.price) || 0).toFixed(2);
+        }
+        if (coolerSelect.value) {
+            total += parseFloat(coolerSelect.options[coolerSelect.selectedIndex].dataset.price) || 0;
+            coolerPrice.textContent = '¥' + (parseFloat(coolerSelect.options[coolerSelect.selectedIndex].dataset.price) || 0).toFixed(2);
+        }
+        if (motherboardSelect.value) {
+            total += parseFloat(motherboardSelect.options[motherboardSelect.selectedIndex].dataset.price) || 0;
+            motherboardPrice.textContent = '¥' + (parseFloat(motherboardSelect.options[motherboardSelect.selectedIndex].dataset.price) || 0).toFixed(2);
+        }
+        if (memorySelect.value) {
+            total += parseFloat(memorySelect.options[memorySelect.selectedIndex].dataset.price) || 0;
+            memoryPrice.textContent = '¥' + (parseFloat(memorySelect.options[memorySelect.selectedIndex].dataset.price) || 0).toFixed(2);
+        }
+        if (storageSelect.value) {
+            total += parseFloat(storageSelect.options[storageSelect.selectedIndex].dataset.price) || 0;
+            storagePrice.textContent = '¥' + (parseFloat(storageSelect.options[storageSelect.selectedIndex].dataset.price) || 0).toFixed(2);
+        }
+        if (graphicsSelect.value) {
+            total += parseFloat(graphicsSelect.options[graphicsSelect.selectedIndex].dataset.price) || 0;
+            graphicsPrice.textContent = '¥' + (parseFloat(graphicsSelect.options[graphicsSelect.selectedIndex].dataset.price) || 0).toFixed(2);
+        }
+        if (caseSelect.value) {
+            total += parseFloat(caseSelect.options[caseSelect.selectedIndex].dataset.price) || 0;
+            casePrice.textContent = '¥' + (parseFloat(caseSelect.options[caseSelect.selectedIndex].dataset.price) || 0).toFixed(2);
+        }
+        if (powerSelect.value) {
+            total += parseFloat(powerSelect.options[powerSelect.selectedIndex].dataset.price) || 0;
+            powerPrice.textContent = '¥' + (parseFloat(powerSelect.options[powerSelect.selectedIndex].dataset.price) || 0).toFixed(2);
+        }
+        if (monitorSelect.value) {
+            total += parseFloat(monitorSelect.options[monitorSelect.selectedIndex].dataset.price) || 0;
+            monitorPrice.textContent = '¥' + (parseFloat(monitorSelect.options[monitorSelect.selectedIndex].dataset.price) || 0).toFixed(2);
+        }
+        
+        // 计算租金 (月租金 = 总价/15, 日租金 = 月租金/30)
+        const monthly = total / 15;
+        const daily = monthly / 30;
+        
+        // 更新显示
+        totalPrice.textContent = '¥' + total.toFixed(2);
+        dailyRent.textContent = '¥' + daily.toFixed(2);
+        monthlyRent.textContent = '¥' + monthly.toFixed(2);
+        
+        // 更新隐藏字段
+        totalPriceInput.value = total.toFixed(2);
+        dailyRentInput.value = daily.toFixed(2);
+        monthlyRentInput.value = monthly.toFixed(2);
+    }
+    
+    // 计算打印机租金
+    function calculatePrinterRent() {
+        const price = parseFloat(printerPurchasePrice.value) || 0;
+        
+        // 计算租金
+        const monthly = price / 15;
+        const daily = monthly / 30;
+        
+        // 更新显示
+        printerDailyRent.textContent = '¥' + daily.toFixed(2);
+        printerMonthlyRent.textContent = '¥' + monthly.toFixed(2);
+        
+        // 更新隐藏字段
+        totalPriceInput.value = price.toFixed(2);
+        dailyRentInput.value = daily.toFixed(2);
+        monthlyRentInput.value = monthly.toFixed(2);
+    }
+    
+    // 为每个配件选择添加事件监听
+    document.querySelectorAll('.cpu-select, .cooler-select, .motherboard-select, .memory-select, .storage-select, .graphics-select, .case-select, .power-select, .monitor-select').forEach(select => {
+        select.addEventListener('change', calculateComputerTotal);
+    });
+    
+    // 监听打印机价格变化
+    printerPurchasePrice.addEventListener('input', calculatePrinterRent);
+});
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

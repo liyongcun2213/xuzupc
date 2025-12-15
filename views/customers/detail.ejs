@@ -1,0 +1,321 @@
+<%- include('../layout') %>
+
+<style>
+    .summary-card {
+        border-radius: 8px;
+        padding: 16px 20px;
+        background-color: #f8f9fa;
+        margin-bottom: 16px;
+    }
+    .summary-card h6 {
+        font-size: 14px;
+        color: #666;
+        margin-bottom: 4px;
+    }
+    .summary-card .amount {
+        font-size: 20px;
+        font-weight: 600;
+    }
+    .amount-positive { color: #28a745; }
+    .amount-negative { color: #dc3545; }
+    .amount-normal { color: #333; }
+    .status-tag {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 13px;
+    }
+    .status-paid { background-color: #d4edda; color: #155724; }
+    .status-overdue { background-color: #f8d7da; color: #721c24; }
+    .status-terminated { background-color: #e2e3e5; color: #383d41; }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5>客户消费详情 - <%= customer.name %></h5>
+    <div>
+        <a href="/customers" class="btn btn-outline-secondary btn-sm me-2">返回列表</a>
+        <button type="button" class="btn btn-primary btn-sm me-2" onclick="generateCustomerBills()">
+            <i class="bi bi-file-earmark-text"></i> 生成账单
+        </button>
+        <button type="button" class="btn btn-success btn-sm" onclick="showRechargeModal()">充值</button>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <h6 class="mb-3">客户信息</h6>
+        <div class="row mb-2">
+            <div class="col-md-3">客户编号：<strong><%= account ? account.customer_code : '—' %></strong></div>
+            <div class="col-md-3">客户名称：<strong><%= customer.name %></strong></div>
+            <div class="col-md-3">联系电话：<strong><%= customer.phone || '—' %></strong></div>
+            <div class="col-md-3">联系地址：<strong><%= customer.address || '—' %></strong></div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-3">
+        <div class="summary-card">
+            <h6>预付金额</h6>
+            <div class="amount amount-normal">¥<%= account ? (Number(account.prepaid_amount) || 0).toFixed(2) : '0.00' %></div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="summary-card">
+            <h6>消耗金额</h6>
+            <div class="amount amount-normal">¥<%= account ? (Number(account.consumed_amount) || 0).toFixed(2) : '0.00' %></div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="summary-card">
+            <h6>余额</h6>
+            <% const balance = account ? Number(account.balance || 0) : 0; %>
+            <div class="amount <%= balance > 0 ? 'amount-positive' : (balance < 0 ? 'amount-negative' : 'amount-normal') %>">¥<%= balance.toFixed(2) %></div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="summary-card">
+            <h6>状态</h6>
+            <% let statusClass = 'status-paid', statusText = '已缴费'; %>
+            <% if (account) { %>
+                <% if (account.status === 'overdue') { statusClass = 'status-overdue'; statusText = '欠费'; } %>
+                <% if (account.status === 'terminated') { statusClass = 'status-terminated'; statusText = '已退租'; } %>
+            <% } %>
+            <span class="status-tag <%= statusClass %>"><%= statusText %></span>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header border-bottom-0 pb-0">
+        <ul class="nav nav-tabs card-header-tabs" id="detailTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="orders-tab" data-bs-toggle="tab" data-bs-target="#orders" type="button" role="tab">订单详情</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="bills-tab" data-bs-toggle="tab" data-bs-target="#bills" type="button" role="tab">历史账单</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="transactions-tab" data-bs-toggle="tab" data-bs-target="#transactions" type="button" role="tab">交易记录</button>
+            </li>
+        </ul>
+    </div>
+    <div class="card-body">
+        <div class="tab-content">
+            <!-- 订单详情 -->
+            <div class="tab-pane fade show active" id="orders" role="tabpanel">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>订单号</th>
+                                <th>设备编号</th>
+                                <th>规格型号</th>
+                                <th>日租金</th>
+                                <th>月租金</th>
+                                <th>起租日期</th>
+                                <th>结束日期</th>
+                                <th>退租日期</th>
+                                <th>天数</th>
+                                <th>状态</th>
+                                <th>消耗金额</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (orderItems && orderItems.length > 0) { %>
+                                <% orderItems.forEach(item => { %>
+                                    <tr>
+                                        <td><a href="/rental-orders/view/<%= item.order_id %>" target="_blank"><%= item.order_number %></a></td>
+                                        <td><%= item.device_code || '-' %></td>
+                                        <td><%= item.product_name || '-' %></td>
+                                        <td>¥<%= item.daily_rate ? (Number(item.daily_rate) || 0).toFixed(2) : '0.00' %></td>
+                                        <td>¥<%= item.monthly_rate ? (Number(item.monthly_rate) || 0).toFixed(2) : '0.00' %></td>
+                                        <td><%= item.start_date ? moment(item.start_date).format('YYYY/MM/DD') : '-' %></td>
+                                        <td><%= item.end_date ? moment(item.end_date).format('YYYY/MM/DD') : '-' %></td>
+                                        <td><%= item.actual_return_date ? moment(item.actual_return_date).format('YYYY/MM/DD') : '-' %></td>
+                                        <td><%= item.days || 0 %></td>
+                                        <td><%= item.status_text %></td>
+                                        <td>¥<%= (Number(item.consumed_amount) || 0).toFixed(2) %></td>
+                                        <td>
+                                            <a href="/customers/<%= customer.id %>/bills/order/<%= item.order_id %>" class="btn btn-sm btn-outline-secondary">账单</a>
+                                        </td>
+                                    </tr>
+                                <% }) %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="12" class="text-center text-muted py-4">暂无订单</td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 历史账单 -->
+            <div class="tab-pane fade" id="bills" role="tabpanel">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>账单号</th>
+                                <th>账单日期</th>
+                                <th>账单周期</th>
+                                <th>账单金额</th>
+                                <th>状态</th>
+                                <th>项目数</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (bills && bills.length > 0) { %>
+                                <% bills.forEach(bill => { %>
+                                    <tr>
+                                        <td><%= bill.bill_number %></td>
+                                        <td><%= moment(bill.bill_date).format('YYYY/MM/DD') %></td>
+                                        <td><%= moment(bill.period_start).format('YYYY/MM/DD') %> 至 <%= moment(bill.period_end).format('YYYY/MM/DD') %></td>
+                                        <td>¥<%= (Number(bill.amount) || 0).toFixed(2) %></td>
+                                        <td>
+                                            <span class="badge bg-warning text-dark">未付费</span>
+                                        </td>
+                                        <td><%= bill.item_count %></td>
+                                        <td>
+                                            <a href="/customers/<%= customer.id %>/bills/<%= bill.id %>" class="btn btn-sm btn-primary">查看</a>
+                                        </td>
+                                    </tr>
+                                <% }) %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted py-4">暂无账单</td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 交易记录 -->
+            <div class="tab-pane fade" id="transactions" role="tabpanel">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>日期</th>
+                                <th>类型</th>
+                                <th>金额</th>
+                                <th>交易前余额</th>
+                                <th>交易后余额</th>
+                                <th>备注</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (transactions && transactions.length > 0) { %>
+                                <% transactions.forEach(tx => { %>
+                                    <tr>
+                                        <td><%= moment(tx.transaction_date).format('YYYY/MM/DD HH:mm') %></td>
+                                        <td>
+                                            <%= tx.transaction_type === 'payment' ? '缴费' :
+                                                tx.transaction_type === 'charge' ? '扣费' :
+                                                tx.transaction_type === 'refund' ? '退款' : '调整' %>
+                                        </td>
+                                        <td>¥<%= (Number(tx.amount) || 0).toFixed(2) %></td>
+                                        <td>¥<%= (Number(tx.balance_before) || 0).toFixed(2) %></td>
+                                        <td>¥<%= (Number(tx.balance_after) || 0).toFixed(2) %></td>
+                                        <td><%= tx.notes || '' %></td>
+                                    </tr>
+                                <% }) %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-4">暂无交易记录</td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 充值模态框（占位，暂不实现具体逻辑） -->
+<div class="modal fade" id="rechargeModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">客户充值</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p>充值功能将在后续版本中实现。</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+    let rechargeModal;
+    document.addEventListener('DOMContentLoaded', function() {
+        rechargeModal = new bootstrap.Modal(document.getElementById('rechargeModal'));
+    });
+
+    function showRechargeModal() {
+        rechargeModal.show();
+    }
+
+    // 为该客户生成账单
+    function generateCustomerBills() {
+        if (!confirm('确定要为该客户生成所有账单吗？\n\n系统会一次性生成该客户所有租赁订单的全部账期账单（已存在的账单会自动跳过）。')) {
+            return;
+        }
+
+        const customerId = <%= customer.id %>;
+        
+        // 显示加载提示
+        const loadingToast = document.createElement('div');
+        loadingToast.className = 'toast position-fixed top-0 start-50 translate-middle-x mt-3';
+        loadingToast.setAttribute('role', 'alert');
+        loadingToast.innerHTML = `
+            <div class="toast-body bg-info text-white">
+                <div class="spinner-border spinner-border-sm me-2" role="status">
+                    <span class="visually-hidden">加载中...</span>
+                </div>
+                正在生成账单，请稍候...
+            </div>
+        `;
+        document.body.appendChild(loadingToast);
+        const toast = new bootstrap.Toast(loadingToast);
+        toast.show();
+
+        fetch(`/api/customer-billing/generate-bills/${customerId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                toast.hide();
+                loadingToast.remove();
+
+                if (data.success) {
+                    alert(data.message || '账单生成完成');
+                    // 刷新页面以显示最新数据
+                    location.reload();
+                } else {
+                    alert('生成账单失败：' + (data.message || '未知错误'));
+                }
+            })
+            .catch(err => {
+                toast.hide();
+                loadingToast.remove();
+                console.error('生成账单失败:', err);
+                alert('生成账单失败，请稍后重试');
+            });
+    }
+
+</script>
+
+<%- include('../base-footer') %>

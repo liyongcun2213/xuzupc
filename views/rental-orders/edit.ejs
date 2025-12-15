@@ -1,0 +1,165 @@
+<%- include('../layout') %>
+
+<div class="container-fluid mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4>编辑租赁订单</h4>
+        <div>
+            <a href="/rental-orders/view/<%= order.id %>" class="btn btn-outline-secondary me-2">
+                <i class="bi bi-eye"></i> 查看详情
+            </a>
+            <a href="/rental-orders" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> 返回列表
+            </a>
+        </div>
+    </div>
+
+    <form action="/rental-orders/edit/<%= order.id %>" method="post">
+        <div class="row">
+            <!-- 左侧：订单信息 -->
+            <div class="col-md-4">
+                <div class="card mb-3">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">订单信息</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">订单号</label>
+                            <input type="text" class="form-control" value="<%= order.order_number %>" readonly>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">客户名称</label>
+                            <input type="text" class="form-control" value="<%= order.customer_name || '-' %>" readonly>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">联系人</label>
+                            <input type="text" class="form-control" value="<%= order.contact_person || '-' %>" readonly>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">联系电话</label>
+                            <input type="text" class="form-control" value="<%= order.contact_phone || '-' %>" readonly>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">合作伙伴</label>
+                            <input type="text" class="form-control" value="<%= order.partner_name || '-' %>" readonly>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">订单日期</label>
+                                    <input type="date" class="form-control" value="<%= moment(order.order_date).format('YYYY-MM-DD') %>" readonly>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">起租日期</label>
+                                    <input type="date" class="form-control" name="startDate" value="<%= moment(order.start_date).format('YYYY-MM-DD') %>" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">结束日期</label>
+                                    <input type="date" class="form-control" name="endDate" value="<%= order.end_date ? moment(order.end_date).format('YYYY-MM-DD') : '' %>">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">付款周期</label>
+                                    <select class="form-select" name="paymentCycle" required>
+                                        <option value="monthly" <%= order.payment_cycle === 'monthly' ? 'selected' : '' %>>月度付款</option>
+                                        <option value="quarterly" <%= order.payment_cycle === 'quarterly' ? 'selected' : '' %>>季度付款</option>
+                                        <option value="yearly" <%= order.payment_cycle === 'yearly' ? 'selected' : '' %>>年度付款</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">押金</label>
+                            <input type="number" step="0.01" min="0" class="form-control" name="deposit" value="<%= (Number(order.deposit) || 0).toFixed(2) %>">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">订单总金额</label>
+                            <input type="number" step="0.01" min="0" class="form-control" name="totalAmount" value="<%= (Number(order.total_amount) || 0).toFixed(2) %>">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">备注</label>
+                            <textarea class="form-control" name="notes" rows="3" placeholder="请输入订单备注信息..."><%= order.notes || '' %></textarea>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success">保存修改</button>
+                            <a href="/rental-orders" class="btn btn-secondary">取消</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧：租赁设备（只读） -->
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">租赁设备（只读）</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive" style="min-height: 300px;">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>设备编号</th>
+                                        <th>产品型号</th>
+                                        <th>产品名称</th>
+                                        <th>规格配置</th>
+                                        <th>数量</th>
+                                        <th>月租金</th>
+                                        <th>日租金</th>
+                                        <th>小计</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% if (items && items.length > 0) { %>
+                                        <% let total = 0; %>
+                                        <% items.forEach(item => { 
+                                            const subtotal = (item.monthly_rate || 0) * (item.quantity || 1);
+                                            total += subtotal;
+                                        %>
+                                            <tr>
+                                                <td><%= item.device_code || item.serial_number || '-' %></td>
+                                                <td><%= item.product_code || '-' %></td>
+                                                <td><%= item.product_name || '-' %></td>
+                                                <td><%= item.specifications || '-' %></td>
+                                                <td><%= item.quantity || 1 %></td>
+                                                <td>¥<%= (Number(item.monthly_rate) || 0).toFixed(2) %></td>
+                                                <td>¥<%= (Number(item.daily_rate) || 0).toFixed(2) %></td>
+                                                <td class="fw-bold">¥<%= subtotal.toFixed(2) %></td>
+                                            </tr>
+                                        <% }) %>
+                                        <tr class="table-active">
+                                            <td colspan="7" class="text-end fw-bold">合计：</td>
+                                            <td class="fw-bold text-primary fs-5">¥<%= total.toFixed(2) %></td>
+                                        </tr>
+                                    <% } else { %>
+                                        <tr>
+                                            <td colspan="8" class="text-center text-muted">暂无设备信息</td>
+                                        </tr>
+                                    <% } %>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

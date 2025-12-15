@@ -1,0 +1,18 @@
+<%- include('../layout') %>
+
+<div class="card mt-3">
+    <div class="card-header">
+        <h5 class="mb-0">设备微信二维码</h5>
+    </div>
+    <div class="card-body text-center">
+        <p class="mb-1">设备编号：<strong><%= device.device_code %></strong></p>
+        <p class="text-muted mb-3">型号：<%= device.product_specifications || device.product_code || '-' %></p>
+        <img src="<%= qrcodeDataUrl %>" alt="设备二维码" class="img-fluid" style="max-width: 260px; border: 1px solid #eee; border-radius: 10px; padding: 5px; background: #fff;">
+        <p class="mt-3">
+            <small class="text-muted">扫码后打开地址：</small><br>
+            <a href="<%= targetUrl %>" target="_blank"><%= targetUrl %></a>
+        </p>
+    </div>
+</div>
+
+<%- include('../base-footer') %>

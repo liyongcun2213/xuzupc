@@ -1,0 +1,607 @@
+<%- include('../layout') %>
+
+<div class="row mt-3">
+    <!-- 左侧：订单信息 -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">订单信息</h5>
+            </div>
+            <div class="card-body">
+                <form id="rentalOrderForm">
+                    <div class="mb-3">
+                        <label for="orderNumber" class="form-label">订单号</label>
+                        <input type="text" class="form-control" id="orderNumber" name="orderNumber" readonly>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">客户 <span class="text-danger">*</span></label>
+                        <div class="position-relative">
+                            <input type="text" class="form-control" id="customerSearch" 
+                                   placeholder="输入客户名称、联系人或电话搜索..." autocomplete="off" required>
+                            <input type="hidden" id="customerId" name="customerId">
+                            <div id="customerDropdown" class="dropdown-menu w-100" 
+                                 style="max-height: 300px; overflow-y: auto;">
+                            </div>
+                        </div>
+                        <small class="form-text text-muted">已选择: <span id="selectedCustomerName" class="text-primary">未选择</span></small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="partnerId" class="form-label">合作伙伴</label>
+                        <select class="form-select" id="partnerId" name="partnerId">
+                            <option value="">无</option>
+                            <% if (typeof partners !== 'undefined' && partners.length > 0) { %>
+                                <% partners.forEach(partner => { %>
+                                    <option value="<%= partner.id %>"><%= partner.name %></option>
+                                <% }) %>
+                            <% } %>
+                        </select>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="startDate" class="form-label">起租日期</label>
+                                <input type="date" class="form-control" id="startDate" name="startDate" required onchange="updateEndDate()">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="endDate" class="form-label">结束日期</label>
+                                <input type="date" class="form-control" id="endDate" name="endDate" readonly>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="contractPeriod" class="form-label">合同周期</label>
+                                <select class="form-select" id="contractPeriod" name="contractPeriod">
+                                    <option value="1" selected>1年</option>
+                                    <option value="2">2年</option>
+                                    <option value="3">3年</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="paymentCycle" class="form-label">付款周期</label>
+                                <select class="form-select" id="paymentCycle" name="paymentCycle">
+                                    <option value="monthly">月度付款</option>
+                                    <option value="quarterly" selected>季度付款</option>
+                                    <option value="yearly">年度付款</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">备注</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3" placeholder="请输入订单备注信息..."></textarea>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-secondary" onclick="window.location.href='/rental-orders'">取消</button>
+                        <button type="submit" class="btn btn-success">创建订单</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右侧：租赁设备 -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">租赁设备</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive" style="min-height: 300px;">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th style="width: 15%;">设备编号</th>
+                                <th style="width: 15%;">设备名称</th>
+                                <th style="width: 20%;">规格配置</th>
+                                <th style="width: 8%;">数量</th>
+                                <th style="width: 12%;">月租金</th>
+                                <th style="width: 12%;">日租金</th>
+                                <th style="width: 10%;">金额</th>
+                                <th style="width: 8%;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="deviceTableBody">
+                            <tr id="emptyRow">
+                                <td colspan="8" class="text-center text-muted">
+                                    请点击下方"添加设备"按钮添加租赁设备
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mt-3">
+                    <button type="button" class="btn btn-primary" onclick="openDeviceModal()">
+                        <i class="bi bi-plus-circle"></i> 添加设备
+                    </button>
+                </div>
+
+                <div class="mt-4 pt-3 border-top">
+                    <div class="d-flex justify-content-end">
+                        <h5 class="mb-0">总金额: <span class="text-primary">¥<span id="totalAmount">0.00</span></span></h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加设备模态框 -->
+<div class="modal fade" id="deviceModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">选择设备</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <input type="text" class="form-control" id="deviceSearch" placeholder="搜索设备编号或规格型号...">
+                </div>
+                <div class="table-responsive" style="max-height: 400px;">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th style="width: 4%;">
+                                    <input type="checkbox" id="selectAllDevices" onchange="toggleSelectAll(this)">
+                                </th>
+                                <th style="width: 13%;">设备编号</th>
+                                <th style="width: 13%;">设备名称</th>
+                                <th style="width: 32%;">规格配置</th>
+                                <th style="width: 13%;">月租金</th>
+                                <th style="width: 13%;">日租金</th>
+                                <th style="width: 12%;">状态</th>
+                            </tr>
+                        </thead>
+                        <tbody id="deviceTableList">
+                            <% if (typeof devices !== 'undefined' && devices.length > 0) { %>
+                                <% devices.forEach(device => { 
+                                    // 状态翻译
+                                    let statusText = device.status;
+                                    let statusClass = 'bg-secondary';
+                                    switch(device.status) {
+                                        case 'in_warehouse': statusText = '在仓库'; statusClass = 'bg-success'; break;
+                                        case 'available': statusText = '可用'; statusClass = 'bg-success'; break;
+                                        case 'rented': statusText = '已租出'; statusClass = 'bg-warning'; break;
+                                        case 'maintenance': statusText = '维护中'; statusClass = 'bg-info'; break;
+                                        case 'retired': statusText = '已退役'; statusClass = 'bg-dark'; break;
+                                        case 'upgraded': statusText = '已升级'; statusClass = 'bg-primary'; break;
+                                    }
+                                %>
+                                    <tr data-device-id="<%= device.id %>"
+                                        data-code="<%= device.device_code || device.serial_number %>"
+                                        data-name="<%= device.product_name || '' %>"
+                                        data-product-code="<%= device.product_code || '' %>"
+                                        data-spec="<%= device.specifications || '' %>"
+                                        data-daily="<%= device.rental_price_per_day || 0 %>"
+                                        data-monthly="<%= device.rental_price_per_month || 0 %>">
+                                        <td>
+                                            <input type="checkbox" class="device-checkbox" value="<%= device.id %>">
+                                        </td>
+                                        <td><%= device.device_code || device.serial_number %></td>
+                                        <td><%= device.product_name || '-' %></td>
+                                        <td><%= device.specifications || '-' %></td>
+                                        <td>
+                                            <input type="number" class="form-control form-control-sm device-monthly-rent" 
+                                                   value="<%= (Number(device.rental_price_per_month) || 0).toFixed(2) %>" 
+                                                   min="0" step="0.01" style="width: 90px;" 
+                                                   data-device-id="<%= device.id %>"
+                                                   oninput="updateDailyRent(this)">
+                                        </td>
+                                        <td>
+                                            <span class="device-daily-rent" data-device-id="<%= device.id %>">
+                                                <%= (Number(device.rental_price_per_day) || 0).toFixed(2) %>
+                                            </span>
+                                        </td>
+                                        <td><span class="badge <%= statusClass %>"><%= statusText %></span></td>
+                                    </tr>
+                                <% }) %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted">暂无可用设备</td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                <button type="button" class="btn btn-primary" onclick="addSelectedDevices()">
+                    <i class="bi bi-plus-circle"></i> 添加选中设备
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+let deviceItemCounter = 0;
+let deviceItems = [];
+let deviceModal;
+
+// 客户数据
+let allCustomers = [];
+let selectedCustomer = null;
+
+// 更新结束日期（起租日期+1年）
+function updateEndDate() {
+    const startDateInput = document.getElementById('startDate');
+    const endDateInput = document.getElementById('endDate');
+    
+    if (startDateInput && startDateInput.value && endDateInput) {
+        const startDate = new Date(startDateInput.value);
+        const endDate = new Date(startDate);
+        endDate.setFullYear(endDate.getFullYear() + 1);
+        
+        const year = endDate.getFullYear();
+        const month = String(endDate.getMonth() + 1).padStart(2, '0');
+        const day = String(endDate.getDate()).padStart(2, '0');
+        endDateInput.value = `${year}-${month}-${day}`;
+    }
+}
+
+// 初始化客户搜索功能
+function initCustomerSearch() {
+    const searchInput = document.getElementById('customerSearch');
+    const dropdown = document.getElementById('customerDropdown');
+    const customerIdInput = document.getElementById('customerId');
+    const selectedNameSpan = document.getElementById('selectedCustomerName');
+    
+    // 加载所有客户数据
+    <% if (typeof customers !== 'undefined' && customers.length > 0) { %>
+        allCustomers = <%- JSON.stringify(customers) %>;
+        console.log('客户数据加载完成，共', allCustomers.length, '个客户');
+    <% } else { %>
+        allCustomers = [];
+        console.warn('未找到客户数据');
+    <% } %>
+    
+    // 输入时搜索
+    searchInput.addEventListener('input', function(e) {
+        const searchText = e.target.value.toLowerCase().trim();
+        
+        console.log('搜索文本:', searchText);
+        
+        // 如果为空，显示所有客户
+        if (searchText === '') {
+            renderCustomerDropdown(allCustomers);
+            return;
+        }
+        
+        // 过滤客户
+        const filteredCustomers = allCustomers.filter(customer => {
+            const name = (customer.name || '').toLowerCase();
+            const contact = (customer.contact_person || '').toLowerCase();
+            const phone = (customer.phone || '').toLowerCase();
+            const matches = name.includes(searchText) || 
+                   contact.includes(searchText) || 
+                   phone.includes(searchText);
+            return matches;
+        });
+        
+        console.log('过滤后客户数量:', filteredCustomers.length);
+        renderCustomerDropdown(filteredCustomers);
+    });
+    
+    // 点击输入框显示所有客户
+    searchInput.addEventListener('focus', function() {
+        console.log('输入框获得焦点');
+        renderCustomerDropdown(allCustomers);
+    });
+    
+    // 点击外部关闭下拉框
+    document.addEventListener('click', function(e) {
+        if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.remove('show');
+        }
+    });
+}
+
+// 渲染客户下拉列表
+function renderCustomerDropdown(customers) {
+    const dropdown = document.getElementById('customerDropdown');
+    
+    if (customers.length === 0) {
+        dropdown.innerHTML = '<div class="dropdown-item text-muted">未找到匹配的客户</div>';
+        dropdown.classList.add('show');
+        return;
+    }
+    
+    let html = '';
+    customers.forEach(function(customer) {
+        html += '<a class="dropdown-item" href="javascript:void(0)" onclick="selectCustomer(' + customer.id + ')">';
+        html += '<div><strong>' + (customer.name || '') + '</strong></div>';
+        html += '<small class="text-muted">';
+        html += (customer.contact_person || '-') + ' | ' + (customer.phone || '-');
+        html += '</small>';
+        html += '</a>';
+    });
+    
+    dropdown.innerHTML = html;
+    dropdown.classList.add('show');
+}
+
+// 选择客户
+function selectCustomer(customerId) {
+    selectedCustomer = allCustomers.find(c => c.id === customerId);
+    
+    if (selectedCustomer) {
+        document.getElementById('customerSearch').value = selectedCustomer.name;
+        document.getElementById('customerId').value = selectedCustomer.id;
+        document.getElementById('selectedCustomerName').textContent = selectedCustomer.name;
+        document.getElementById('customerDropdown').classList.remove('show');
+    }
+}
+
+// 页面初始化
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('=== 页面初始化开始 ===');
+    
+    // 初始化模态框
+    deviceModal = new bootstrap.Modal(document.getElementById('deviceModal'));
+    console.log('✓ 模态框初始化完成');
+    
+    // 初始化客户搜索
+    initCustomerSearch();
+    console.log('✓ 客户搜索初始化完成');
+    
+    // 设置今天日期
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('startDate').value = today;
+    updateEndDate();
+    console.log('✓ 日期已设置');
+    
+    // 生成订单编号
+    const dateStr = today.replace(/-/g, '');
+    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    document.getElementById('orderNumber').value = `DD${dateStr}${random}`;
+    console.log('✓ 订单号已生成');
+    
+    // 设备搜索
+    document.getElementById('deviceSearch').addEventListener('input', function(e) {
+        const searchText = e.target.value.toLowerCase();
+        const rows = document.querySelectorAll('#deviceTableList tr');
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(searchText) ? '' : 'none';
+        });
+    });
+    
+    console.log('=== 页面初始化完成 ===');
+});
+
+// 打开设备选择模态框
+function openDeviceModal() {
+    console.log('打开设备选择模态框');
+    document.getElementById('deviceSearch').value = '';
+    document.getElementById('selectAllDevices').checked = false;
+    
+    // 清除所有复选框选中状态
+    document.querySelectorAll('.device-checkbox').forEach(cb => {
+        cb.checked = false;
+    });
+    
+    // 显示所有设备行
+    const rows = document.querySelectorAll('#deviceTableList tr');
+    rows.forEach(row => {
+        row.style.display = '';
+    });
+    deviceModal.show();
+}
+
+// 更新日租金（月租金输入时自动计算）
+function updateDailyRent(input) {
+    const monthlyRent = parseFloat(input.value) || 0;
+    const dailyRent = (monthlyRent / 30).toFixed(2);
+    const deviceId = input.dataset.deviceId;
+    
+    // 更新对应的日租金显示
+    const dailyRentSpan = document.querySelector(`.device-daily-rent[data-device-id="${deviceId}"]`);
+    if (dailyRentSpan) {
+        dailyRentSpan.textContent = dailyRent;
+    }
+}
+
+// 全选/取消全选
+function toggleSelectAll(checkbox) {
+    const checkboxes = document.querySelectorAll('.device-checkbox');
+    checkboxes.forEach(cb => {
+        // 只选中可见的行
+        const row = cb.closest('tr');
+        if (row && row.style.display !== 'none') {
+            cb.checked = checkbox.checked;
+        }
+    });
+}
+
+// 添加选中的设备
+function addSelectedDevices() {
+    const selectedCheckboxes = document.querySelectorAll('.device-checkbox:checked');
+    
+    if (selectedCheckboxes.length === 0) {
+        alert('请至少选择一个设备');
+        return;
+    }
+    
+    let addedCount = 0;
+    let skippedCount = 0;
+    
+    selectedCheckboxes.forEach(checkbox => {
+        const row = checkbox.closest('tr');
+        const deviceId = row.dataset.deviceId;
+        const deviceCode = row.dataset.code;
+        const deviceName = row.dataset.name || '';
+        const productCode = row.dataset.productCode || '';
+        const deviceSpec = row.dataset.spec || '';
+        
+        // 获取用户修改后的月租金
+        const monthlyInput = row.querySelector('.device-monthly-rent');
+        const monthlyRate = parseFloat(monthlyInput.value) || 0;
+        
+        // 获取自动计算的日租金
+        const dailySpan = row.querySelector('.device-daily-rent');
+        const dailyRate = parseFloat(dailySpan.textContent) || 0;
+        
+        // 数量固定为1
+        const quantity = 1;
+        
+        // 检查是否已添加
+        if (deviceItems.find(item => item.deviceId === deviceId)) {
+            skippedCount++;
+            return;
+        }
+        
+        deviceItemCounter++;
+        
+        deviceItems.push({
+            id: deviceItemCounter,
+            deviceId: deviceId,
+            deviceCode: deviceCode,
+            deviceName: deviceName,
+            productCode: productCode,
+            deviceSpec: deviceSpec,
+            quantity: quantity,
+            dailyRate: dailyRate,
+            monthlyRate: monthlyRate
+        });
+        
+        document.getElementById('emptyRow').style.display = 'none';
+        
+        const tbody = document.getElementById('deviceTableBody');
+        const newRow = document.createElement('tr');
+        newRow.id = `deviceRow${deviceItemCounter}`;
+        newRow.innerHTML = `
+            <td>${deviceCode}</td>
+            <td>${deviceName || '-'}</td>
+            <td>${deviceSpec || productCode}</td>
+            <td>${quantity}</td>
+            <td>¥${monthlyRate.toFixed(2)}</td>
+            <td>¥${dailyRate.toFixed(2)}</td>
+            <td class="item-amount">¥${(monthlyRate * quantity).toFixed(2)}</td>
+            <td>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeDeviceItem(${deviceItemCounter})">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(newRow);
+        
+        addedCount++;
+        console.log('已添加设备:', deviceCode, deviceName, '月租金:', monthlyRate, '日租金:', dailyRate);
+    });
+    
+    if (addedCount > 0) {
+        deviceModal.hide();
+        calculateTotal();
+        
+        let message = `成功添加 ${addedCount} 个设备`;
+        if (skippedCount > 0) {
+            message += `，跳过 ${skippedCount} 个已添加的设备`;
+        }
+        console.log(message);
+    }
+    
+    if (skippedCount > 0 && addedCount === 0) {
+        alert('所选设备已全部添加过了');
+    }
+}
+
+// 移除设备
+function removeDeviceItem(id) {
+    deviceItems = deviceItems.filter(item => item.id !== id);
+    document.getElementById(`deviceRow${id}`).remove();
+    
+    if (deviceItems.length === 0) {
+        document.getElementById('emptyRow').style.display = '';
+    }
+    
+    calculateTotal();
+}
+
+// 计算总金额
+function calculateTotal() {
+    let total = 0;
+    deviceItems.forEach(item => {
+        total += item.monthlyRate * item.quantity;
+    });
+    document.getElementById('totalAmount').textContent = total.toFixed(2);
+}
+
+// 表单提交
+document.getElementById('rentalOrderForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    if (deviceItems.length === 0) {
+        alert('请至少添加一个租赁设备');
+        return;
+    }
+    
+    if (!document.getElementById('customerId').value) {
+        alert('请选择客户');
+        return;
+    }
+    
+    const formData = {
+        orderNumber: document.getElementById('orderNumber').value,
+        orderDate: new Date().toISOString().split('T')[0], // 当前日期作为订单日期
+        customerId: document.getElementById('customerId').value,
+        partnerId: document.getElementById('partnerId').value || null,
+        startDate: document.getElementById('startDate').value,
+        endDate: document.getElementById('endDate').value || null,
+        contractPeriod: document.getElementById('contractPeriod').value,
+        paymentCycle: document.getElementById('paymentCycle').value,
+        notes: document.getElementById('notes').value,
+        totalAmount: parseFloat(document.getElementById('totalAmount').textContent),
+        deviceItems: deviceItems.map(item => ({
+            deviceId: item.deviceId,
+            deviceCode: item.deviceCode,
+            specifications: item.deviceSpec,
+            quantity: item.quantity,
+            dailyRate: item.dailyRate,
+            monthlyRate: item.monthlyRate
+        }))
+    };
+    
+    console.log('提交订单数据:', formData);
+    
+    fetch('/rental-orders/add', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => {
+        console.log('响应状态:', response.status);
+        return response.json();
+    })
+    .then(data => {
+        console.log('响应数据:', data);
+        if (data.success) {
+            alert('租赁订单创建成功！');
+            window.location.href = '/rental-orders';
+        } else {
+            alert('创建失败：' + (data.message || '未知错误'));
+            console.error('创建失败详情:', data);
+        }
+    })
+    .catch(error => {
+        console.error('请求错误:', error);
+        alert('创建失败，请稍后重试。错误信息: ' + error.message);
+    });
+});
+</script>

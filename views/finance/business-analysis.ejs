@@ -1,0 +1,689 @@
+<%- include('../layout') %>
+
+<!-- 核心指标概览 -->
+
+
+
+
+<div class="row mb-4">
+    <!-- 净利润 -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="text-xs font-weight-bold text-primary text-uppercase">净利润</div>
+                    <div class="text-muted"><i class="bi bi-cash-stack"></i></div>
+                </div>
+                <div class="small text-muted">租金收入 - 固定成本 - 报废配件损失 + 资产价值变动</div>
+                <div class="h5 mb-0 font-weight-bold text-gray-800" id="netProfit">¥0.00</div>
+                <div class="small mt-2 text-muted" id="netProfitFormula">
+                    点击分析按钮查看详细计算
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 租金收入 -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="text-xs font-weight-bold text-success text-uppercase">租金收入</div>
+                    <div class="text-muted"><i class="bi bi-currency-dollar"></i></div>
+                </div>
+                <div class="small text-muted">实收租金</div>
+                <div class="h5 mb-0 font-weight-bold text-gray-800" id="rentalIncome">¥0.00</div>
+                <div class="small mt-2 text-muted" id="rentalDetails">
+                    <span id="receivedCount">0</span> 笔收款
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 固定成本 -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="text-xs font-weight-bold text-warning text-uppercase">固定成本</div>
+                    <div class="text-muted"><i class="bi bi-receipt"></i></div>
+                </div>
+                <div class="small text-muted">工资、租金、水电费等固定支出</div>
+                <div class="h5 mb-0 font-weight-bold text-gray-800" id="fixedCosts">¥0.00</div>
+                <div class="small mt-2 text-muted" id="fixedCostsBreakdown">
+                    点击分析按钮查看详细分类
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 资产价值变动 -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="text-xs font-weight-bold text-info text-uppercase">资产价值变动</div>
+                    <div class="text-muted"><i class="bi bi-graph-up-arrow"></i></div>
+                </div>
+                <div class="small text-muted">期末资产市值 - 期初资产市值 - 新增投资</div>
+                <div class="h5 mb-0 font-weight-bold text-gray-800" id="assetValueChange">¥0.00</div>
+                <div class="small mt-2 text-muted" id="assetValueDetails">
+                    点击分析按钮查看详细计算
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 计算详情表格 -->
+<div class="row">
+    <!-- 净利润计算详情 -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">净利润计算详情</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <tbody>
+                            <tr>
+                                <th width="40%">租金收入</th>
+                                <td class="text-success" id="rentalIncomeDetail">¥0.00</td>
+                            </tr>
+                            <tr>
+                                <th>固定成本</th>
+                                <td class="text-danger" id="fixedCostsDetail">¥0.00</td>
+                            </tr>
+                            <tr>
+                                <th>报废配件损失</th>
+                                <td class="text-danger" id="scrapLossDetail">¥0.00</td>
+                            </tr>
+                            <tr>
+                                <th>资产价值变动</th>
+                                <td id="assetValueChangeDetail">¥0.00</td>
+                            </tr>
+                            <tr class="table-active">
+                                <th>净利润</th>
+                                <td class="font-weight-bold" id="netProfitDetail">¥0.00</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 资产价值变动计算详情 -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">资产价值变动计算详情</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <tbody>
+                            <tr>
+                                <th width="40%">期末资产市值</th>
+                                <td id="endingAssetValue">¥0.00</td>
+                            </tr>
+                            <tr>
+                                <th>期初资产市值</th>
+                                <td id="beginningAssetValue">¥0.00</td>
+                            </tr>
+                            <tr>
+                                <th>新增投资</th>
+                                <td id="newInvestment">¥0.00</td>
+                            </tr>
+                            <tr class="table-active">
+                                <th>资产价值变动</th>
+                                <td class="font-weight-bold" id="assetValueChangeCalculation">¥0.00</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 历史趋势图表 -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-primary">净利润历史趋势</h6>
+        <div class="dropdown no-arrow">
+            <select class="form-select form-select-sm" id="chartPeriod">
+                <option value="3">最近3个月</option>
+                <option value="6" selected>最近6个月</option>
+                <option value="12">最近12个月</option>
+                <option value="custom">自定义</option>
+            </select>
+            <input type="number" class="form-control form-control-sm" id="customMonths" 
+                   min="1" max="24" placeholder="输入月数" style="width: 120px; display: none;">
+            <button class="btn btn-sm btn-primary ms-2" id="applyCustomMonths" 
+                    style="display: none;">应用</button>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="chart-area">
+            <canvas id="netProfitChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- 经营分析工具栏（底部） -->
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3">
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="refreshData">
+                <i class="bi bi-arrow-clockwise"></i> 刷新数据
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="exportReport">
+                <i class="bi bi-download"></i> 导出报表
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- 分析周期选择（底部） -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <form id="analysisPeriodForm" class="row g-3">
+                    <div class="col-md-3">
+                        <label for="analysisYear" class="form-label">分析年份</label>
+                        <select class="form-select" id="analysisYear">
+                            <option value="2022">2022年</option>
+                            <option value="2023">2023年</option>
+                            <option value="2024">2024年</option>
+                            <option value="2025" selected>2025年</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="startMonth" class="form-label">本期起月份</label>
+                        <select class="form-select" id="startMonth">
+                            <option value="1" selected>1月</option>
+                            <option value="2">2月</option>
+                            <option value="3">3月</option>
+                            <option value="4">4月</option>
+                            <option value="5">5月</option>
+                            <option value="6">6月</option>
+                            <option value="7">7月</option>
+                            <option value="8">8月</option>
+                            <option value="9">9月</option>
+                            <option value="10">10月</option>
+                            <option value="11">11月</option>
+                            <option value="12">12月</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="endMonth" class="form-label">本期止月份</label>
+                        <select class="form-select" id="endMonth">
+                            <option value="1">1月</option>
+                            <option value="2">2月</option>
+                            <option value="3">3月</option>
+                            <option value="4">4月</option>
+                            <option value="5">5月</option>
+                            <option value="6">6月</option>
+                            <option value="7">7月</option>
+                            <option value="8">8月</option>
+                            <option value="9">9月</option>
+                            <option value="10">10月</option>
+                            <option value="11">11月</option>
+                            <option value="12">12月</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button type="button" class="btn btn-primary" id="analyzeBtn">分析</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap JS -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+// 全局变量
+let netProfitChart = null;
+
+// 页面加载完成后执行
+document.addEventListener('DOMContentLoaded', function() {
+    // 设置当前年月
+    const currentDate = new Date();
+    document.getElementById('analysisYear').value = currentDate.getFullYear();
+    document.getElementById('startMonth').value = 1; // 默认1月
+    document.getElementById('endMonth').value = currentDate.getMonth() + 1; // 当前月
+    
+    initChart();
+    
+    // 事件监听
+    document.getElementById('refreshData').addEventListener('click', performAnalysis);
+    document.getElementById('analyzeBtn').addEventListener('click', performAnalysis);
+    document.getElementById('exportReport').addEventListener('click', exportReport);
+    document.getElementById('chartPeriod').addEventListener('change', handleChartPeriodChange);
+    document.getElementById('applyCustomMonths').addEventListener('click', applyCustomMonths);
+    document.getElementById('customMonths').addEventListener('keypress', function(event) {
+        if (event.key === 'Enter') {
+            applyCustomMonths();
+        }
+    });
+    
+    // 自动执行分析
+    performAnalysis();
+});
+
+// 初始化图表
+function initChart() {
+    const ctx = document.getElementById('netProfitChart').getContext('2d');
+    netProfitChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [
+                {
+                    label: '净利润',
+                    data: [],
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    tension: 0.1,
+                    fill: false
+                },
+                {
+                    label: '租金收入',
+                    data: [],
+                    borderColor: 'rgb(54, 162, 235)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    tension: 0.1,
+                    fill: false
+                },
+                {
+                    label: '固定成本',
+                    data: [],
+                    borderColor: 'rgb(255, 99, 132)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    tension: 0.1,
+                    fill: false
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '¥' + value.toFixed(0);
+                        }
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ¥' + context.parsed.y.toFixed(2);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// 执行分析
+function performAnalysis() {
+    const year = document.getElementById('analysisYear').value;
+    const startMonth = parseInt(document.getElementById('startMonth').value);
+    const endMonth = parseInt(document.getElementById('endMonth').value);
+    
+    // 验证月份范围
+    if (startMonth > endMonth) {
+        alert('本期起月份不能大于本期止月份');
+        return;
+    }
+    
+    // 显示加载状态
+    document.querySelectorAll('.card-body .h5').forEach(el => {
+        el.textContent = '计算中...';
+    });
+    
+    // 获取净利润数据
+    fetch(`/api/finance/net-profit?year=${year}&startMonth=${startMonth}&endMonth=${endMonth}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateDashboard(data.data);
+            } else {
+                alert('获取数据失败: ' + (data.message || '未知错误'));
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching net profit data:', error);
+            alert('获取数据时发生错误');
+        });
+}
+
+// 更新仪表盘数据
+function updateDashboard(data) {
+    // 更新核心指标
+    document.getElementById('netProfit').textContent = '¥' + formatNumber(data.netProfit);
+    document.getElementById('rentalIncome').textContent = '¥' + formatNumber(data.rentalIncome);
+    document.getElementById('fixedCosts').textContent = '¥' + formatNumber(data.fixedCosts);
+    document.getElementById('assetValueChange').textContent = '¥' + formatNumber(data.assetValueChange);
+    
+    // 更新详情说明
+    document.getElementById('receivedCount').textContent = data.receivedCount || 0;
+    
+    document.getElementById('netProfitFormula').textContent = 
+        `¥${formatNumber(data.rentalIncome)} - ¥${formatNumber(data.fixedCosts)} - ¥${formatNumber(data.scrapLoss || 0)} + ¥${formatNumber(data.assetValueChange)}`;
+    
+    document.getElementById('assetValueDetails').textContent = 
+        `¥${formatNumber(data.endingAssetValue)} - ¥${formatNumber(data.beginningAssetValue)} - ¥${formatNumber(data.newInvestment)}`;
+    
+    // 更新计算详情表格
+    document.getElementById('rentalIncomeDetail').textContent = '¥' + formatNumber(data.rentalIncome);
+    document.getElementById('fixedCostsDetail').textContent = '¥' + formatNumber(data.fixedCosts);
+    document.getElementById('scrapLossDetail').textContent = '¥' + formatNumber(data.scrapLoss || 0);
+    document.getElementById('assetValueChangeDetail').textContent = '¥' + formatNumber(data.assetValueChange);
+    document.getElementById('netProfitDetail').textContent = '¥' + formatNumber(data.netProfit);
+    
+    document.getElementById('endingAssetValue').textContent = '¥' + formatNumber(data.endingAssetValue);
+    document.getElementById('beginningAssetValue').textContent = '¥' + formatNumber(data.beginningAssetValue);
+    document.getElementById('newInvestment').textContent = '¥' + formatNumber(data.newInvestment);
+    document.getElementById('assetValueChangeCalculation').textContent = '¥' + formatNumber(data.assetValueChange);
+
+    // 为资产价值相关数字添加计算公式 Tooltip
+    attachAssetValueTooltips(data);
+    
+    // 根据净利润值设置颜色
+    const netProfitElement = document.getElementById('netProfit');
+    const netProfitDetailElement = document.getElementById('netProfitDetail');
+    
+    if (data.netProfit >= 0) {
+        netProfitElement.classList.remove('text-danger');
+        netProfitElement.classList.add('text-success');
+        netProfitDetailElement.classList.remove('text-danger');
+        netProfitDetailElement.classList.add('text-success');
+    } else {
+        netProfitElement.classList.remove('text-success');
+        netProfitElement.classList.add('text-danger');
+        netProfitDetailElement.classList.remove('text-success');
+        netProfitDetailElement.classList.add('text-danger');
+    }
+    
+    // 更新图表
+    updateChart();
+}
+
+// 为资产价值相关数字添加 Tooltip，显示说明文本
+function attachAssetValueTooltips(data) {
+    const endingCell = document.getElementById('endingAssetValue');
+    const beginningCell = document.getElementById('beginningAssetValue');
+    const newInvestmentCell = document.getElementById('newInvestment');
+
+    // 期末资产市值：固定说明
+    if (endingCell) {
+        const tooltipText = '所有配件在分析时间段最后一个月的市场价值总和，市场价值参考闲鱼、淘宝的每月更新的二手价格';
+
+        endingCell.setAttribute('data-bs-toggle', 'tooltip');
+        endingCell.setAttribute('data-bs-placement', 'top');
+        endingCell.setAttribute('title', tooltipText);
+    }
+
+    // 期初资产市值：固定说明
+    if (beginningCell) {
+        const tooltipText = '所有配件在分析时间段第一个月的市场价值总和，市场价值参考闲鱼、淘宝的每月更新的二手价格';
+
+        beginningCell.setAttribute('data-bs-toggle', 'tooltip');
+        beginningCell.setAttribute('data-bs-placement', 'top');
+        beginningCell.setAttribute('title', tooltipText);
+    }
+
+    // 新增投资：提示公式说明（保持原来的解释）
+    if (newInvestmentCell) {
+        const newInvest = Number(data.newInvestment || 0);
+        const newInvestStr = newInvest.toFixed(0);
+        const tooltipText = `${newInvestStr} = 本期内所有配件采购数量 × 单价之和`;
+
+        newInvestmentCell.setAttribute('data-bs-toggle', 'tooltip');
+        newInvestmentCell.setAttribute('data-bs-placement', 'top');
+        newInvestmentCell.setAttribute('title', tooltipText);
+    }
+
+    // 重新初始化 Bootstrap Tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.forEach((tooltipTriggerEl) => {
+        const existing = bootstrap.Tooltip.getInstance(tooltipTriggerEl);
+        if (existing) {
+            existing.dispose();
+        }
+        new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+}
+
+
+
+// 格式化数字
+function formatNumber(num) {
+    const value = Number(num || 0);
+    if (Number.isNaN(value)) {
+        return '0.00';
+    }
+    return value.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+
+// 处理图表期间选择变化
+function handleChartPeriodChange() {
+    const chartPeriod = document.getElementById('chartPeriod').value;
+    const customMonthsInput = document.getElementById('customMonths');
+    const applyButton = document.getElementById('applyCustomMonths');
+    
+    if (chartPeriod === 'custom') {
+        customMonthsInput.style.display = 'block';
+        applyButton.style.display = 'block';
+        customMonthsInput.focus();
+    } else {
+        customMonthsInput.style.display = 'none';
+        applyButton.style.display = 'none';
+        updateChart();
+    }
+}
+
+// 应用自定义月份数
+function applyCustomMonths() {
+    const customMonths = parseInt(document.getElementById('customMonths').value);
+    
+    if (!customMonths || customMonths < 1) {
+        alert('请输入有效的月份数（至少1个月）');
+        return;
+    }
+    
+    if (customMonths > 24) {
+        alert('最多只能查看24个月的历史数据');
+        return;
+    }
+    
+    updateChart(customMonths);
+}
+
+// 更新图表
+function updateChart(customMonths) {
+    let months;
+    
+    if (customMonths) {
+        months = customMonths;
+    } else {
+        months = document.getElementById('chartPeriod').value;
+    }
+    
+    // 生成历史日期范围
+    const today = new Date();
+    const endDate = new Date(today.getFullYear(), today.getMonth(), 1);
+    const startDate = new Date(today.getFullYear(), today.getMonth() - (months - 1), 1);
+    
+    const startYear = startDate.getFullYear();
+    const startMonth = startDate.getMonth() + 1;
+    const endYear = endDate.getFullYear();
+    const endMonth = endDate.getMonth() + 1;
+    
+    // 获取历史净利润数据
+    Promise.all([
+        fetch(`/api/finance/rental-income?startYear=${startYear}&startMonth=${startMonth}&endYear=${endYear}&endMonth=${endMonth}`).then(res => res.json()),
+        fetch(`/api/finance/asset-value-change?startYear=${startYear}&startMonth=${startMonth}&endYear=${endYear}&endMonth=${endMonth}`).then(res => res.json()),
+        fetch(`/api/finance/fixed-costs-history?startYear=${startYear}&startMonth=${startMonth}&endYear=${endYear}&endMonth=${endMonth}`).then(res => res.json())
+    ])
+    .then(([rentalData, assetData, fixedCostsData]) => {
+        if (rentalData.success && assetData.success && fixedCostsData.success) {
+            const fixedCostsMap = new Map();
+            fixedCostsData.data.forEach(item => {
+                fixedCostsMap.set(item.month, item.fixed_costs || 0);
+            });
+
+            // 合并数据
+            const mergedData = rentalData.data.map(item => {
+                const monthKey = item.month;
+                const matchingAsset = assetData.data.find(asset => asset.month === monthKey);
+                const assetValueChange = matchingAsset ? matchingAsset.monthly_value_change || 0 : 0;
+                const fixedCosts = fixedCostsMap.get(monthKey) || 0;
+                const netProfit = item.rentalIncome - fixedCosts + assetValueChange; // 租金收入 - 固定成本 + 资产价值变动
+                
+                return {
+                    month: monthKey,
+                    netProfit,
+                    rentalIncome: item.rentalIncome,
+                    fixedCosts,
+                    assetValueChange
+                };
+            });
+            
+            // 更新图表数据
+            netProfitChart.data.labels = mergedData.map(item => {
+                const [year, month] = item.month.split('-');
+                return `${year}年${month}月`;
+            });
+            
+            netProfitChart.data.datasets[0].data = mergedData.map(item => item.netProfit);
+            netProfitChart.data.datasets[1].data = mergedData.map(item => item.rentalIncome);
+            netProfitChart.data.datasets[2].data = mergedData.map(item => item.fixedCosts);
+            
+            netProfitChart.update();
+        } else {
+            console.error('获取图表数据失败');
+        }
+    })
+
+    .catch(error => {
+        console.error('Error updating chart:', error);
+    });
+}
+
+// 导出报表
+function exportReport() {
+    const year = document.getElementById('analysisYear').value;
+    const startMonth = document.getElementById('startMonth').value;
+    const endMonth = document.getElementById('endMonth').value;
+    
+    // 获取当前页面数据
+    const netProfit = document.getElementById('netProfit').textContent;
+    const rentalIncome = document.getElementById('rentalIncome').textContent;
+    const fixedCosts = document.getElementById('fixedCosts').textContent;
+    const scrapLoss = document.getElementById('scrapLossDetail').textContent;
+    const assetValueChange = document.getElementById('assetValueChange').textContent;
+    
+    // 创建CSV内容
+    const csvContent = [
+        ['经营分析报表', ''],
+        ['分析期间', `${year}年${startMonth}月-${endMonth}月`],
+        ['', ''],
+        ['指标', '金额'],
+        ['净利润', netProfit],
+        ['租金收入', rentalIncome],
+        ['固定成本', fixedCosts],
+        ['报废配件损失', scrapLoss],
+        ['资产价值变动', assetValueChange],
+        ['', ''],
+        ['资产价值变动计算', ''],
+        ['期末资产市值', document.getElementById('endingAssetValue').textContent],
+        ['期初资产市值', document.getElementById('beginningAssetValue').textContent],
+        ['新增投资', document.getElementById('newInvestment').textContent],
+        ['', ''],
+        ['净利润计算公式', '租金收入 - 固定成本 - 报废配件损失 + 资产价值变动'],
+        ['详细计算', `${rentalIncome} - ${fixedCosts} - ${scrapLoss} + ${assetValueChange} = ${netProfit}`],
+        ['', ''],
+        ['导出时间', new Date().toLocaleString()]
+    ].map(row => row.join(',')).join('\n');
+    
+    // 创建Blob并下载
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `经营分析报表_${year}年${startMonth}-${endMonth}月.csv`;
+    link.click();
+}
+</script>
+
+<style>
+/* 只在本页调小顶部标题字号 */
+.page-header .h2 {
+    font-size: 1.1rem;
+}
+
+.border-left-primary {
+    border-left: 0.25rem solid #4e73df !important;
+}
+.border-left-success {
+    border-left: 0.25rem solid #1cc88a !important;
+}
+.border-left-info {
+    border-left: 0.25rem solid #36b9cc !important;
+}
+.border-left-warning {
+    border-left: 0.25rem solid #f6c23e !important;
+}
+.text-xs {
+    font-size: 0.7rem;
+}
+.chart-area {
+    position: relative;
+    height: 20rem;
+    width: 100%;
+}
+
+/* 自定义月份输入样式 */
+#customMonths:focus {
+    border-color: #4e73df;
+    box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+}
+
+/* 资产提示框样式：背景色与左侧边栏保持一致 */
+.tooltip .tooltip-inner {
+    background-color: #3c444d;
+    color: #f9fafb;
+    font-size: 0.75rem;
+    padding: 0.45rem 0.75rem;
+    border-radius: 6px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.35);
+}
+
+.tooltip.bs-tooltip-top .tooltip-arrow::before,
+.tooltip.bs-tooltip-bottom .tooltip-arrow::before,
+.tooltip.bs-tooltip-start .tooltip-arrow::before,
+.tooltip.bs-tooltip-end .tooltip-arrow::before {
+    border-top-color: #3c444d;
+    border-bottom-color: #3c444d;
+    border-left-color: #3c444d;
+    border-right-color: #3c444d;
+}
+</style>

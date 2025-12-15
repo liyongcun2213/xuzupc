@@ -1,0 +1,370 @@
+<%- include('../layout') %>
+
+<div class="card">
+    <div class="card-header">
+        <h5>设备组装</h5>
+    </div>
+    <div class="card-body">
+        <form id="assembleForm">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="productSelect" class="form-label">选择产品型号</label>
+                        <select class="form-select" id="productSelect" required>
+                            <option value="">请选择产品型号...</option>
+                            <% if (typeof products !== 'undefined' && products) { %>
+                                <% products.forEach(product => { %>
+                                <option value="<%= product.id %>" data-product-id="<%= product.id %>" data-product-code="<%= product.product_code || '' %>" data-product-name="<%= product.name %>">
+                                    <% if (product.product_code) { %>
+                                        <%= product.product_code %> - <%= product.name %>
+                                    <% } else { %>
+                                        <%= product.name %>
+                                    <% } %>
+                                </option>
+                                <% }) %>
+                            <% } %>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="quantityInput" class="form-label">组装数量</label>
+                        <input type="number" class="form-control" id="quantityInput" min="1" max="100" value="1" required>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 产品配置详情 -->
+            <div id="productConfigSection">
+                <h5 class="mb-3">产品配置详情</h5>
+                <div id="productConfigDetails" class="mb-3 text-muted">
+                    <small>请选择产品型号后，将在这里显示该产品的标准配置清单。组装时将自动按照此清单扣减配件库存。</small>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary" id="assembleBtn" disabled>
+                    <i class="bi bi-tools"></i> 开始组装
+                </button>
+                <a href="/devices" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> 返回列表
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 组装结果模态框 -->
+<div class="modal fade" id="resultModal" tabindex="-1" aria-labelledby="resultModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="resultModalLabel">组装结果</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="resultContent"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="viewDevicesBtn">查看设备</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const productSelect = document.getElementById('productSelect');
+    const assembleBtn = document.getElementById('assembleBtn');
+    const productConfigSection = document.getElementById('productConfigSection');
+    const productConfigDetails = document.getElementById('productConfigDetails');
+    const productConfigPlaceholder = productConfigDetails ? productConfigDetails.innerHTML : '<small>请选择产品型号后，将在这里显示该产品的标准配置清单。组装时将自动按照此清单扣减配件库存。</small>';
+    const quantityInput = document.getElementById('quantityInput');
+
+    function resetProductConfigDetails(message) {
+        if (!productConfigSection || !productConfigDetails) return;
+        productConfigSection.style.display = 'block';
+        productConfigDetails.innerHTML = message || productConfigPlaceholder;
+        updateAssembleQuantityByStock(null);
+    }
+
+    function showProductConfigLoading() {
+        if (!productConfigSection || !productConfigDetails) return;
+        productConfigSection.style.display = 'block';
+        productConfigDetails.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 mb-0">正在加载产品配置...</p></div>';
+    }
+
+    function updateAssembleQuantityByStock(minStockValue) {
+        if (!quantityInput) return;
+        const hasValidStock = Number.isFinite(minStockValue) && minStockValue > 0;
+        const defaultValue = hasValidStock ? minStockValue : 1;
+        quantityInput.value = defaultValue;
+        quantityInput.min = 1;
+        quantityInput.max = hasValidStock ? minStockValue : 100;
+    }
+
+    resetProductConfigDetails();
+
+    // 产品选择变化时获取对应的模板和配件，并展示产品配置
+    productSelect.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const productId = selectedOption ? selectedOption.getAttribute('data-product-id') : null;
+
+        if (!productId) {
+            assembleBtn.disabled = true;
+            resetProductConfigDetails();
+            return;
+        }
+
+        // 显示产品配置详情加载动画并加载配置
+        showProductConfigLoading();
+        loadProductConfig(productId);
+
+        // 只要选择了产品就启用组装按钮
+        assembleBtn.disabled = false;
+    });
+
+    // 加载产品配置详情
+    function loadProductConfig(productId) {
+        if (!productConfigSection || !productConfigDetails) return;
+
+        productConfigSection.style.display = 'block';
+        productConfigDetails.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">正在加载产品配置...</p></div>';
+
+        fetch(`/products/config/${productId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    productConfigDetails.innerHTML = '<p class="text-center text-danger">加载产品配置失败</p>';
+                    return;
+                }
+
+                const accessories = Array.isArray(data.accessories) ? data.accessories : [];
+                let html = '';
+                let total = 0;
+                let minStock = Infinity;
+
+                if (accessories.length > 0) {
+                    html += '<div class="table-responsive">';
+                    html += '<table class="table table-bordered align-middle mb-0">';
+                    html += '<thead class="table-light">';
+                    html += '<tr>';
+                    html += '<th style="width:25%;">部件</th>';
+                    html += '<th>配置说明</th>';
+                    html += '<th style="width:12%;" class="text-center">每台数量</th>';
+                    html += '<th style="width:12%;" class="text-center">库存</th>';
+                    html += '<th style="width:15%;" class="text-end">单价 (¥)</th>';
+                    html += '</tr>';
+                    html += '</thead>';
+                    html += '<tbody>';
+
+                    let minStock = null;
+
+                    accessories.forEach(accessory => {
+                        const price = parseFloat(accessory.unit_price) || 0;
+                        const stock = Number.parseInt(accessory.stock_quantity, 10) || 0;
+                        const perDeviceQuantity = Number.parseInt(accessory.quantity, 10) || 1;
+
+                        const parts = [];
+                        if (accessory.brand) parts.push(accessory.brand);
+                        if (accessory.model) parts.push(accessory.model);
+                        if (!accessory.brand && !accessory.model) parts.push(accessory.name || '');
+                        const desc = parts.join(' ');
+
+                        // 计算按当前配置最多能组装多少台设备
+                        if (perDeviceQuantity > 0) {
+                            const maxDevicesByThisAccessory = stock > 0 ? Math.floor(stock / perDeviceQuantity) : 0;
+                            if (maxDevicesByThisAccessory > 0) {
+                                if (minStock === null) {
+                                    minStock = maxDevicesByThisAccessory;
+                                } else {
+                                    minStock = Math.min(minStock, maxDevicesByThisAccessory);
+                                }
+                            }
+                        }
+
+                        total += price * perDeviceQuantity;
+
+                        html += `
+                            <tr data-accessory-id="${accessory.accessory_id || ''}">
+                                <td>${accessory.category_name || ''}</td>
+                                <td>${desc}</td>
+                                <td class="text-center">
+                                    <input type="number" class="form-control form-control-sm accessory-qty-input" min="1" value="${perDeviceQuantity}">
+                                </td>
+                                <td class="text-center">${stock}</td>
+                                <td class="text-end">${price.toFixed(2)}</td>
+                            </tr>
+                        `;
+                    });
+
+                    const backendTotal = parseFloat(data.total_price) || total;
+
+                    html += `
+                        <tr class="fw-bold">
+                            <td colspan="4" class="text-end">合计</td>
+                            <td class="text-end">¥${backendTotal.toFixed(2)}</td>
+                        </tr>
+                    `;
+
+                    html += '</tbody>';
+                    html += '</table>';
+                    html += '</div>';
+
+                    updateAssembleQuantityByStock(minStock);
+                } else {
+                    const backendTotal = parseFloat(data.total_price) || 0;
+                    html += '<p class="text-center text-muted mb-1">该产品未维护详细配件清单。</p>';
+                    if (backendTotal > 0) {
+                        html += `<p class="text-center"><strong>合计：</strong> ¥${backendTotal.toFixed(2)}</p>`;
+                    }
+                    updateAssembleQuantityByStock(null);
+                }
+
+                productConfigDetails.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Error loading product config:', error);
+                productConfigDetails.innerHTML = '<p class="text-center text-danger">加载产品配置失败</p>';
+            });
+    }
+
+
+
+    // 表单提交
+    document.getElementById('assembleForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        console.log('表单提交事件触发');
+        
+        const productSelect = document.getElementById('productSelect');
+        const selectedOption = productSelect.options[productSelect.selectedIndex];
+        const productId = selectedOption ? selectedOption.getAttribute('data-product-id') : null;
+        const quantity = parseInt(document.getElementById('quantityInput').value);
+        
+        console.log('productId:', productId, 'quantity:', quantity);
+        
+        if (!productId || !quantity || quantity <= 0) {
+            alert('请选择产品并填写组装数量');
+            return;
+        }
+
+        // 直接提交组装，后端会根据产品配置清单和配件数量进行组装
+        submitAssembly(productId, quantity);
+    });
+
+    // 提交组装请求函数
+    function submitAssembly(productId, quantity) {
+        assembleBtn.disabled = true;
+        assembleBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> 组装中...';
+
+        // 从产品配置详情表格中收集配件及其数量
+        const accessories = [];
+        if (productConfigDetails) {
+            const rows = productConfigDetails.querySelectorAll('tbody tr[data-accessory-id]');
+
+            if (!rows || rows.length === 0) {
+                alert('该产品未维护详细配件清单，不能组装电脑。请先在产品管理中配置配件。');
+                assembleBtn.disabled = false;
+                assembleBtn.innerHTML = '<i class="bi bi-tools"></i> 开始组装';
+                return;
+            }
+
+            rows.forEach(row => {
+                const accessoryId = row.getAttribute('data-accessory-id');
+                const qtyInput = row.querySelector('.accessory-qty-input');
+                const qtyValue = qtyInput ? parseInt(qtyInput.value, 10) : 0;
+
+                if (!accessoryId || !qtyValue || qtyValue <= 0) {
+                    return;
+                }
+
+                accessories.push({
+                    accessoryId: accessoryId,
+                    quantity: qtyValue
+                });
+            });
+        }
+
+        if (!accessories.length) {
+            alert('请为每个配件填写正确的数量（至少为 1），才能组装电脑。');
+            assembleBtn.disabled = false;
+            assembleBtn.innerHTML = '<i class="bi bi-tools"></i> 开始组装';
+            return;
+        }
+
+        const requestData = {
+            productId: productId,
+            quantity: quantity,
+            accessories: accessories
+        };
+
+        console.log('提交数据:', requestData);
+
+        fetch('/devices/assemble-batch', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        })
+        .then(response => {
+            console.log('收到响应，状态码:', response.status);
+            console.log('响应类型:', response.headers.get('content-type'));
+            
+            if (!response.ok) {
+                console.warn('响应非 2xx，状态码:', response.status);
+            }
+            
+            return response.json();
+        })
+        .then(data => {
+            console.log('解析后的数据:', data);
+            assembleBtn.disabled = false;
+            assembleBtn.innerHTML = '<i class="bi bi-tools"></i> 开始组装';
+            
+            if (data.success) {
+                showResult(data.message, data.devices);
+            } else {
+                alert(`组装失败: ${data.message}`);
+            }
+        })
+        .catch(error => {
+            console.error('捕获到错误:', error);
+            console.error('错误详情:', error.message);
+            console.error('错误堆栈:', error.stack);
+            assembleBtn.disabled = false;
+            assembleBtn.innerHTML = '<i class="bi bi-tools"></i> 开始组装';
+            alert('组装过程中发生错误，请稍后重试\n错误信息: ' + error.message);
+        });
+    }
+
+    // 显示组装结果
+    function showResult(message, devices) {
+        let html = `<div class="alert alert-success">${message}</div>`;
+        
+        if (devices && devices.length > 0) {
+            html += '<h6>生成的设备编号:</h6><ul class="list-group">';
+            devices.forEach(device => {
+                html += `<li class="list-group-item d-flex justify-content-between align-items-center">
+                    ${device.code}
+                    <a href="/devices/view/${device.code}" class="btn btn-sm btn-outline-primary">查看详情</a>
+                </li>`;
+            });
+            html += '</ul>';
+        }
+        
+        document.getElementById('resultContent').innerHTML = html;
+        
+        const modal = new bootstrap.Modal(document.getElementById('resultModal'));
+        modal.show();
+        
+        // 设置查看设备按钮
+        document.getElementById('viewDevicesBtn').onclick = function() {
+            window.location.href = '/devices';
+        };
+    }
+});
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

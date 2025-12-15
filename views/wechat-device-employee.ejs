@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设备扫码 - 员工操作</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/fonts/bootstrap-icons.css" rel="stylesheet">
+    <link href="/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f8f9fa;
+            padding: 1rem;
+        }
+        .device-card {
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+        }
+        .device-header {
+            background: linear-gradient(135deg, #0d6efd, #0b5ed7);
+            color: #fff;
+            padding: 1.25rem 1.5rem;
+        }
+        .device-header h4 {
+            margin: 0;
+            font-size: 1.2rem;
+        }
+        .device-body {
+            padding: 1.5rem;
+            background-color: #fff;
+        }
+        .device-meta {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        .device-header .device-meta {
+            color: #ffffff;
+        }
+        .action-btn {
+            width: 100%;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 14px;
+            font-weight: 500;
+        }
+        .action-btn i {
+            font-size: 1.6rem;
+            margin-bottom: 0.35rem;
+        }
+        .footer-note {
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            color: #6c757d;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="device-card">
+            <div class="device-header">
+                <div>
+                    <div class="mb-1">
+                        设备编号：<strong><%= device.device_code %></strong>
+                    </div>
+                    <div class="device-meta">
+                        设备名称：<strong><%= device.device_name || '-' %></strong>
+                    </div>
+                    <div class="device-meta">
+                        型号：<%= device.product_specifications || device.product_code || '未知型号' %>
+                    </div>
+                </div>
+            </div>
+            <div class="device-body">
+                <div class="row mb-2">
+                    <div class="col-6">
+                        <div class="device-meta">当前状态</div>
+                        <div>
+                            <% if (device.status === 'in_warehouse') { %>
+                                <span class="badge bg-success">在仓库</span>
+                            <% } else if (device.status === 'available') { %>
+                                <span class="badge bg-primary">可用</span>
+                            <% } else if (device.status === 'rented') { %>
+                                <span class="badge bg-warning text-dark">已租出</span>
+                            <% } else if (device.status === 'maintenance') { %>
+                                <span class="badge bg-info text-dark">维护中</span>
+                            <% } else if (device.status === 'upgraded') { %>
+                                <span class="badge bg-secondary">已升级</span>
+                            <% } else { %>
+                                <span class="badge bg-light text-dark"><%= device.status || '未知' %></span>
+                            <% } %>
+                        </div>
+                    </div>
+                    <div class="col-6 text-end">
+                        <div class="device-meta">扫描员工</div>
+                        <div><strong><%= user ? user.real_name : '未知' %></strong></div>
+                    </div>
+                </div>
+                <hr>
+                <div class="row g-3 mt-1">
+                    <div class="col-12">
+                        <a href="/mobile-rental/create/<%= device.device_code %>" class="btn btn-primary action-btn">
+                            <i class="bi bi-file-earmark-text"></i>
+                            <span>创建租赁</span>
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <button type="button" class="btn btn-outline-warning action-btn" onclick="alert('手机退租流程后续开发');">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                            <span>退租</span>
+                        </button>
+                    </div>
+                    <div class="col-6">
+                        <button type="button" class="btn btn-outline-secondary action-btn" onclick="alert('绑定显示器功能后续开发');">
+                            <i class="bi bi-display"></i>
+                            <span>绑定显示器</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <p class="footer-note">提示：本页为公司员工使用入口，后续将接入完整手机创建租赁/退租流程。</p>
+        <div class="text-center mt-2">
+            <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#logoutModal">
+                退出登录
+            </button>
+        </div>
+    </div>
+
+    <div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="logoutModalLabel">确认退出</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                </div>
+                <div class="modal-body">
+                    确定要退出登录吗？
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <a href="/logout" class="btn btn-danger">确认退出</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,231 @@
+<%- include('../layout') %>
+
+<div class="container-fluid mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4>订单详情</h4>
+        <div>
+            <button class="btn btn-success me-2" onclick="printDeliveryNote()">
+                <i class="bi bi-file-earmark-text"></i> 设备交货单
+            </button>
+            <a href="/rental-orders" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> 返回列表
+            </a>
+        </div>
+    </div>
+
+    <!-- 订单基本信息 -->
+    <div class="card mb-3">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">订单信息</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <table class="table table-borderless">
+                        <tr>
+                            <th width="120">订单编号：</th>
+                            <td><%= order.order_number %></td>
+                        </tr>
+                        <tr>
+                            <th>客户名称：</th>
+                            <td><%= order.customer_name || '-' %></td>
+                        </tr>
+                        <tr>
+                            <th>联系人：</th>
+                            <td><%= order.contact_person || '-' %></td>
+                        </tr>
+                        <tr>
+                            <th>联系电话：</th>
+                            <td><%= order.contact_phone || '-' %></td>
+                        </tr>
+                        <tr>
+                            <th>合作伙伴：</th>
+                            <td><%= order.partner_name || '-' %></td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <table class="table table-borderless">
+                        <tr>
+                            <th width="120">订单日期：</th>
+                            <td><%= moment(order.order_date).format('YYYY-MM-DD') %></td>
+                        </tr>
+                        <tr>
+                            <th>起租日期：</th>
+                            <td><%= moment(order.start_date).format('YYYY-MM-DD') %></td>
+                        </tr>
+                        <tr>
+                            <th>结束日期：</th>
+                            <td><%= order.end_date ? moment(order.end_date).format('YYYY-MM-DD') : '-' %></td>
+                        </tr>
+                        <tr>
+                            <th>付款周期：</th>
+                            <td>
+                                <% if (order.payment_cycle === 'monthly') { %>
+                                    月度付款
+                                <% } else if (order.payment_cycle === 'quarterly') { %>
+                                    季度付款
+                                <% } else if (order.payment_cycle === 'yearly') { %>
+                                    年度付款
+                                <% } else { %>
+                                    <%= order.payment_cycle %>
+                                <% } %>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>订单状态：</th>
+                            <td>
+                                <% if (order.status === 'pending') { %>
+                                    <span class="badge bg-secondary">待处理</span>
+                                <% } else if (order.status === 'active') { %>
+                                    <span class="badge bg-primary">进行中</span>
+                                <% } else if (order.status === 'expired') { %>
+                                    <span class="badge bg-warning">已过期</span>
+                                <% } else if (order.status === 'returned') { %>
+                                    <span class="badge bg-success">已归还</span>
+                                <% } else if (order.status === 'cancelled') { %>
+                                    <span class="badge bg-danger">已取消</span>
+                                <% } else { %>
+                                    <span class="badge bg-secondary"><%= order.status %></span>
+                                <% } %>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            <div class="row mt-2">
+                <div class="col-md-12">
+                    <table class="table table-borderless">
+                        <tr>
+                            <th width="120">业务员：</th>
+                            <td><%= order.salesperson_name || '-' %></td>
+                        </tr>
+                        <tr>
+                            <th>押金：</th>
+                            <td class="text-danger fw-bold">¥<%= (Number(order.deposit) || 0).toFixed(2) %></td>
+                        </tr>
+                        <tr>
+                            <th>订单总金额：</th>
+                            <td class="text-primary fw-bold fs-5">¥<%= (Number(order.total_amount) || 0).toFixed(2) %></td>
+                        </tr>
+                        <% if (order.notes) { %>
+                        <tr>
+                            <th>备注：</th>
+                            <td><%= order.notes %></td>
+                        </tr>
+                        <% } %>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 租赁设备列表 -->
+    <div class="card mb-3">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">租赁设备</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>设备编号</th>
+                            <th>产品型号</th>
+                            <th>产品名称</th>
+                            <th>规格配置</th>
+                            <th>数量</th>
+                            <th>月租金</th>
+                            <th>日租金</th>
+                            <th>退租日期</th>
+                            <th>小计</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% if (items && items.length > 0) { %>
+                            <% let total = 0; %>
+                            <% items.forEach(item => { 
+                                const subtotal = (item.monthly_rate || 0) * (item.quantity || 1);
+                                total += subtotal;
+                            %>
+                                <tr>
+                                    <td><%= item.device_code || item.serial_number || '-' %></td>
+                                    <td><%= item.product_code || '-' %></td>
+                                    <td><%= item.product_name || '-' %></td>
+                                    <td><%= item.specifications || '-' %></td>
+                                    <td><%= item.quantity || 1 %></td>
+                                    <td>¥<%= (Number(item.monthly_rate) || 0).toFixed(2) %></td>
+                                    <td>¥<%= (Number(item.daily_rate) || 0).toFixed(2) %></td>
+                                    <td><%= item.actual_return_date ? moment(item.actual_return_date).format('YYYY-MM-DD') : '-' %></td>
+                                    <td class="fw-bold">¥<%= subtotal.toFixed(2) %></td>
+                                </tr>
+                            <% }) %>
+                            <tr class="table-active">
+                                <td colspan="8" class="text-end fw-bold">合计：</td>
+                                <td class="fw-bold text-primary fs-5">¥<%= total.toFixed(2) %></td>
+                            </tr>
+                        <% } else { %>
+                            <tr>
+                                <td colspan="8" class="text-center text-muted">暂无设备信息</td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 调整租金历史 -->
+    <div class="card">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">调整租金历史</h5>
+        </div>
+        <div class="card-body">
+            <% const rentAdjustments = (typeof adjustments !== 'undefined' && adjustments) ? adjustments : []; %>
+            <% if (rentAdjustments.length > 0) { %>
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 12%;">调整时间</th>
+                                <th style="width: 12%;">生效日期</th>
+                                <th style="width: 16%;">设备编号</th>
+                                <th style="width: 12%;">调整前月租金</th>
+                                <th style="width: 12%;">调整后月租金</th>
+                                <th style="width: 12%;">差额</th>
+                                <th style="width: 12%;">调整人</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% rentAdjustments.forEach(adj => { 
+                                const diff = (adj.new_monthly_rate || 0) - (adj.old_monthly_rate || 0);
+                            %>
+                                <tr>
+                                    <td><%= adj.created_at ? moment(adj.created_at).format('YYYY-MM-DD HH:mm') : '-' %></td>
+                                    <td><%= adj.adjust_effective_date ? moment(adj.adjust_effective_date).format('YYYY-MM-DD') : '-' %></td>
+                                    <td><%= adj.device_code || '-' %></td>
+                                    <td>¥<%= (Number(adj.old_monthly_rate) || 0).toFixed(2) %></td>
+                                    <td>¥<%= (Number(adj.new_monthly_rate) || 0).toFixed(2) %></td>
+                                    <td class="fw-bold <%= diff > 0 ? 'text-danger' : (diff < 0 ? 'text-success' : '') %>">
+                                        <%= diff === 0 ? '¥0.00' : (diff > 0 ? '+' : '') + '¥' + Math.abs(diff).toFixed(2) %>
+                                    </td>
+                                    <td><%= adj.adjusted_by_name || '-' %></td>
+                                </tr>
+                            <% }) %>
+                        </tbody>
+                    </table>
+                </div>
+            <% } else { %>
+                <p class="text-muted mb-0">当前订单尚未有租金调整记录。</p>
+            <% } %>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+function printDeliveryNote() {
+    const orderId = '<%= order.id %>';
+    window.open(`/rental-orders/delivery-note/${orderId}`, '_blank');
+}
+</script>

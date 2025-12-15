@@ -1,0 +1,552 @@
+<%- include('../layout') %>
+
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><%= accessory.name %></h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>配件类别:</strong></td>
+                                <td><%= accessory.category_name %></td>
+                            </tr>
+                            <tr>
+                                <td><strong>品牌:</strong></td>
+                                <td><%= accessory.brand || '-' %></td>
+                            </tr>
+                            <tr>
+                                <td><strong>型号规格:</strong></td>
+                                <td><%= accessory.model || '-' %></td>
+                            </tr>
+                            <tr>
+                                <td><strong>当前库存:</strong></td>
+                                <td><%= accessory.stock_quantity %></td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>采购价格:</strong></td>
+                                <td>¥<%= (Number(accessory.purchase_price) || 0).toFixed(2) %></td>
+                            </tr>
+                            <tr>
+                                <td><strong>当前单价:</strong></td>
+                                <td>¥<%= (Number(accessory.current_price) || 0).toFixed(2) %></td>
+                            </tr>
+                            <tr>
+                                <td><strong>采购总价值:</strong></td>
+                                <td>¥<%= ((Number(accessory.stock_quantity) || 0) * (Number(accessory.purchase_price) || 0)).toFixed(2) %></td>
+                            </tr>
+                            <tr>
+                                <td><strong>当前总价值:</strong></td>
+                                <td>¥<%= ((Number(accessory.stock_quantity) || 0) * (Number(accessory.current_price) || 0)).toFixed(2) %></td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="row mt-3">
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="card-title">月贬值率</h6>
+                                <h3 class="text-danger"><%= monthlyDepreciationRate.toFixed(2) %>%</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="card-title">年贬值率</h6>
+                                <h3 class="text-warning"><%= annualDepreciationRate.toFixed(2) %>%</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="card-title">贬值金额</h6>
+                                <h3 class="text-danger">¥<%= depreciationValue.toFixed(2) %></h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>快速操作</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="/accessories/edit/<%= accessory.id %>" class="btn btn-primary">
+                        <i class="bi bi-pencil"></i> 编辑配件
+                    </a>
+                    <a href="/accessories/batches/<%= accessory.id %>" class="btn btn-info">
+                        <i class="bi bi-layers"></i> 批次管理
+                    </a>
+                    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#adjustStockModal">
+                        <i class="bi bi-arrow-up-down"></i> 调整库存
+                    </button>
+                    <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#updatePriceModal">
+                        <i class="bi bi-currency-exchange"></i> 更新价格
+                    </button>
+                    <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#scrapModal">
+                        <i class="bi bi-trash"></i> 报废配件
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>历史价格走势</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="priceHistoryChart" width="400" height="150"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>库存记录</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>日期</th>
+                                <th>类型</th>
+                                <th>数量</th>
+                                <th>单价</th>
+                                <th>总价值</th>
+                                <th>引用类型</th>
+                                <th>备注</th>
+                                <th>操作人</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% inventoryRecords.forEach(record => { %>
+                            <tr>
+                                <td><%= moment(record.created_at).format('YYYY-MM-DD') %></td>
+                                <td>
+                                    <% if (record.record_type === 'in') { %>
+                                        <span class="badge bg-success">入库</span>
+                                    <% } else if (record.record_type === 'out') { %>
+                                        <span class="badge bg-danger">出库</span>
+                                    <% } else if (record.record_type === 'adjustment') { %>
+                                        <span class="badge bg-warning">调整</span>
+                                    <% } %>
+                                </td>
+                                <td><%= record.quantity %></td>
+                                <td>¥<%= (Number(record.unit_price) || 0).toFixed(2) %></td>
+                                <td>¥<%= (Number(record.total_value) || 0).toFixed(2) %></td>
+                                <td>
+                                    <% if (record.reference_type === 'purchase') { %>
+                                        采购
+                                    <% } else if (record.reference_type === 'assembly') { %>
+                                        组装
+                                    <% } else if (record.reference_type === 'return') { %>
+                                        返还
+                                    <% } else if (record.reference_type === 'check') { %>
+                                        盘点
+                                    <% } else if (record.reference_type === 'scrap') { %>
+                                        报废
+                                    <% } %>
+                                </td>
+                                <td><%= record.notes || '-' %></td>
+                                <td><%= record.created_by_name || '-' %></td>
+                            </tr>
+                            <% }) %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 调整库存模态框 -->
+<div class="modal fade" id="adjustStockModal" tabindex="-1" aria-labelledby="adjustStockModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="adjustStockModalLabel">调整库存</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="adjustStockForm">
+                    <div class="mb-3">
+                        <label for="adjustmentType" class="form-label">调整类型</label>
+                        <select class="form-select" id="adjustmentType" required>
+                            <option value="increase">增加库存</option>
+                            <option value="decrease">减少库存</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="adjustmentQuantity" class="form-label">调整数量</label>
+                        <input type="number" class="form-control" id="adjustmentQuantity" min="1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="adjustmentReason" class="form-label">调整原因</label>
+                        <textarea class="form-control" id="adjustmentReason" rows="3" required></textarea>
+                    </div>
+                    <input type="hidden" id="currentStock" value="<%= accessory.stock_quantity %>">
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="confirmAdjustStock">确认调整</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 更新价格模态框 -->
+<div class="modal fade" id="updatePriceModal" tabindex="-1" aria-labelledby="updatePriceModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="updatePriceModalLabel">更新价格</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="updatePriceForm">
+                    <div class="mb-3">
+                        <label for="newPrice" class="form-label">新价格</label>
+                        <div class="input-group">
+                            <span class="input-group-text">¥</span>
+                            <input type="number" step="0.01" min="0" class="form-control" id="newPrice" value="<%= (Number(accessory.current_price) || 0).toFixed(2) %>" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="priceMonth" class="form-label">适用月份</label>
+                        <input type="month" class="form-control" id="priceMonth" value="<%= currentMonth %>" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="confirmUpdatePrice" onclick="handleConfirmUpdatePrice()">确认更新</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 报废模态框 -->
+<div class="modal fade" id="scrapModal" tabindex="-1" aria-labelledby="scrapModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="scrapModalLabel">报废配件</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i> 
+                    报废操作将从所选批次的库存中扣减数量并记录报废信息，此操作不可撤销！
+                </div>
+                <% if (scrapBatches && scrapBatches.length > 0) { %>
+                <form id="scrapForm">
+                    <div class="mb-3">
+                        <label for="scrapBatchId" class="form-label">选择报废批次</label>
+                        <select class="form-select" id="scrapBatchId" required>
+                            <option value="">请选择批次</option>
+                            <% scrapBatches.forEach(function(batch) { %>
+                            <option 
+                                value="<%= batch.batch_id %>" 
+                                data-remaining="<%= batch.remaining_quantity %>" 
+                                data-price="<%= (batch.purchase_price || 0).toFixed(2) %>">
+                                <%= moment(batch.purchase_date).format('YYYY-MM-DD') %> | 批次号 <%= batch.batch_no || '-' %> | 单价 ¥<%= (batch.purchase_price || 0).toFixed(2) %> | 可用 <%= batch.remaining_quantity %> 件
+                            </option>
+                            <% }); %>
+                        </select>
+                        <div class="form-text">只显示当前仍有剩余数量的批次。</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="scrapQuantity" class="form-label">报废数量</label>
+                        <input type="number" class="form-control" id="scrapQuantity" min="1">
+                        <div class="form-text">
+                            最大可报废数量：<span id="scrapMaxQuantity">0</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="scrapDate" class="form-label">报废日期</label>
+                        <input type="date" class="form-control" id="scrapDate" value="<%= moment().format('YYYY-MM-DD') %>" max="<%= moment().format('YYYY-MM-DD') %>" required>
+                        <div class="form-text">默认今天，可以根据实际报废时间调整。</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="scrapReason" class="form-label">报废原因</label>
+                        <textarea class="form-control" id="scrapReason" rows="3" required></textarea>
+                    </div>
+                </form>
+                <% } else { %>
+                <div class="alert alert-info">
+                    当前没有任何带有库存的批次可供报废。请先通过采购或入库产生批次。
+                </div>
+                <% } %>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" id="confirmScrap">确认报废</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 引入Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+function handleConfirmUpdatePrice() {
+    const newPrice = parseFloat(document.getElementById('newPrice').value);
+    const month = document.getElementById('priceMonth').value;
+
+    if (!newPrice || newPrice <= 0) {
+        alert('请输入有效的价格');
+        return;
+    }
+
+    fetch('/accessories/update-price', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            accessory_id: <%- accessory.id %>,
+            price: newPrice,
+            month: month
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('价格更新成功');
+            window.location.reload();
+        } else {
+            alert('价格更新失败: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('价格更新失败，请重试');
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // 初始化价格历史图表
+    initPriceHistoryChart();
+    
+    // 调整库存
+    document.getElementById('confirmAdjustStock').addEventListener('click', function() {
+        const type = document.getElementById('adjustmentType').value;
+        const quantity = parseInt(document.getElementById('adjustmentQuantity').value);
+        const reason = document.getElementById('adjustmentReason').value.trim();
+        const currentStock = parseInt(document.getElementById('currentStock').value);
+        
+        if (!quantity || !reason) {
+            alert('请填写完整的调整信息');
+            return;
+        }
+        
+        const finalQuantity = type === 'increase' ? currentStock + quantity : currentStock - quantity;
+        if (finalQuantity < 0) {
+            alert('调整后库存不能为负数');
+            return;
+        }
+        
+        fetch('/accessories/adjust-stock', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                accessory_id: <%- accessory.id %>,
+                type: type,
+                quantity: quantity,
+                reason: reason
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('库存调整成功');
+                window.location.reload();
+            } else {
+                alert('库存调整失败: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('库存调整失败，请重试');
+        });
+    });
+    
+    // 报废配件
+    document.getElementById('confirmScrap').addEventListener('click', function() {
+        const reasonInput = document.getElementById('scrapReason');
+        const batchSelect = document.getElementById('scrapBatchId');
+        const quantityInput = document.getElementById('scrapQuantity');
+        const dateInput = document.getElementById('scrapDate');
+
+        if (!batchSelect || !quantityInput) {
+            alert('当前没有可报废的批次');
+            return;
+        }
+
+        const reason = reasonInput ? reasonInput.value.trim() : '';
+        const batchId = batchSelect.value;
+        const quantity = parseInt(quantityInput.value, 10);
+        const selectedOption = batchSelect.selectedOptions[0];
+        const maxQty = selectedOption ? parseInt(selectedOption.getAttribute('data-remaining') || '0', 10) : 0;
+        const scrapDate = dateInput ? dateInput.value : '';
+
+        if (!batchId) {
+            alert('请选择要报废的批次');
+            return;
+        }
+
+        if (!quantity || quantity <= 0) {
+            alert('请输入有效的报废数量');
+            return;
+        }
+
+        if (quantity > maxQty) {
+            alert('报废数量不能大于该批次可用数量（最多 ' + maxQty + ' 件）');
+            return;
+        }
+
+        if (!scrapDate) {
+            alert('请选择报废日期');
+            return;
+        }
+
+        const todayStr = new Date().toISOString().slice(0, 10);
+        if (scrapDate > todayStr) {
+            alert('报废日期不能晚于今天');
+            return;
+        }
+
+        if (!reason) {
+            alert('请输入报废原因');
+            return;
+        }
+        
+        if (confirm('确定要报废所选批次的 ' + quantity + ' 个配件吗？此操作不可撤销！')) {
+            fetch('/accessories/scrap', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    accessory_id: <%- accessory.id %>,
+                    batch_id: batchId,
+                    quantity: quantity,
+                    reason: reason,
+                    scrap_date: scrapDate
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('配件已按批次报废');
+                    window.location.reload();
+                } else {
+                    alert('报废操作失败: ' + (data.message || '未知错误'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('报废操作失败，请重试');
+            });
+        }
+    });
+
+    const scrapBatchSelect = document.getElementById('scrapBatchId');
+    if (scrapBatchSelect) {
+        scrapBatchSelect.addEventListener('change', function() {
+            const selectedOption = this.selectedOptions[0];
+            const remaining = selectedOption ? parseInt(selectedOption.getAttribute('data-remaining') || '0', 10) : 0;
+            const maxSpan = document.getElementById('scrapMaxQuantity');
+            const qtyInput = document.getElementById('scrapQuantity');
+
+            if (maxSpan) {
+                maxSpan.textContent = remaining;
+            }
+
+            if (qtyInput) {
+                qtyInput.value = remaining > 0 ? remaining : '';
+                if (remaining > 0) {
+                    qtyInput.max = remaining;
+                } else {
+                    qtyInput.removeAttribute('max');
+                }
+            }
+        });
+    }
+    
+    function initPriceHistoryChart() {
+        if (typeof Chart === 'undefined') {
+            console.warn('Chart.js 未加载，跳过价格走势图初始化');
+            return;
+        }
+        const ctx = document.getElementById('priceHistoryChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: <%- JSON.stringify(priceHistory.labels || []) %>,
+                datasets: [{
+                    label: '价格',
+                    data: <%- JSON.stringify(priceHistory.prices || []) %>,
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                    fill: true,
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        ticks: {
+                            callback: function(value) {
+                                return '¥' + value.toLocaleString();
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return '价格: ¥' + context.parsed.y.toLocaleString();
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

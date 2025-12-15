@@ -1,0 +1,102 @@
+<%- include('../layout') %>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>产品管理</span>
+        <a href="/products/add" class="btn btn-primary btn-sm">
+            <i class="bi bi-plus-circle"></i> 添加产品
+        </a>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>产品编号</th>
+                        <th>产品名称</th>
+                        <th>类别</th>
+                        <th>产品型号</th>
+                        <th>总价格</th>
+                        <th>日租金</th>
+                        <th>月租金</th>
+                        <th>状态</th>
+                        <th>创建时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% products.forEach(product => { %>
+                    <tr>
+                        <td><%= product.product_code || '-' %></td>
+                        <td><%= product.name %></td>
+                        <td>
+                            <span class="badge bg-info"><%= product.category_name || '-' %></span>
+                        </td>
+                        <td><%= product.model_number || '-' %></td>
+                        <td>¥<%= Number(product.total_price || product.purchase_price || 0).toFixed(2) %></td>
+                        <td>¥<%= Number(product.calculated_daily_rent || 0).toFixed(2) %></td>
+                        <td>¥<%= Number(product.calculated_monthly_rent || 0).toFixed(2) %></td>
+                        
+                        <td>
+                            <span class="badge bg-<%= product.status === 'active' ? 'success' : 'secondary' %>">
+                                <%= product.status === 'active' ? '活跃' : '停用' %>
+                            </span>
+                        </td>
+                        <td><%= moment(product.created_at).format('YYYY-MM-DD') %></td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="/products/view/<%= product.id %>" class="btn btn-outline-info">
+                                    详情
+                                </a>
+                                <a href="/products/edit/<%= product.id %>" class="btn btn-outline-primary">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <button type="button" class="btn btn-outline-danger" onclick="deleteProduct(<%= product.id %>)">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+// 删除产品功能
+function deleteProduct(id) {
+    if (confirm('确定要删除这个产品吗？此操作不可撤销。')) {
+        fetch(`/products/delete/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('产品删除成功！');
+                location.reload();
+            } else {
+                alert('删除失败，请重试。');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('删除过程中发生错误，请重试。');
+        });
+    }
+}
+
+
+</script>
+
+</main>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,581 @@
+<%- include('../layout') %>
+
+<style>
+    @media print {
+        .no-print {
+            display: none !important;
+        }
+        
+        @page {
+            size: A4 landscape;
+            margin: 3mm;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+        }
+        
+        .print-bill {
+            width: 100%;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+            font-family: 'SimSun', '宋体', serif;
+            color: #000;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .print-bill h2 {
+            text-align: center;
+            font-size: 20px;
+            font-weight: bold;
+            margin: 4px 0 6px 0;
+        }
+        
+        .print-bill table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 3px;
+            table-layout: auto;
+        }
+        
+        .print-bill table td,
+        .print-bill table th {
+            border: 1px solid #000;
+            padding: 3px 4px;
+            font-size: 10px;
+            line-height: 1.4;
+            white-space: nowrap;
+        }
+        
+        .print-bill .section-title {
+            font-weight: bold;
+            margin: 5px 0 3px 0;
+            font-size: 12px;
+        }
+        
+        .print-bill .info-table td {
+            height: 26px;
+            padding: 4px 6px;
+            font-size: 11px;
+        }
+        
+        .print-bill .detail-table {
+            flex: 1;
+        }
+        
+        .print-bill .detail-table th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+            text-align: center;
+            font-size: 9px;
+            padding: 3px 2px;
+            line-height: 1.3;
+        }
+        
+        .print-bill .detail-table td {
+            text-align: center;
+            font-size: 9px;
+            padding: 3px 2px;
+            line-height: 1.4;
+        }
+        
+        /* 规格型号列允许换行 */
+        .print-bill .detail-table .col-spec {
+            white-space: normal;
+            word-break: break-all;
+            min-width: 80px;
+            max-width: 120px;
+        }
+        
+        .print-bill .summary-row {
+            background-color: #f9f9f9;
+            font-weight: bold;
+            font-size: 10px;
+        }
+        
+        .print-bill .footer-info {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 6px;
+            font-size: 11px;
+        }
+        
+        .print-bill .combine-cell {
+            font-size: 10px;
+            text-align: left;
+            padding: 4px 8px !important;
+            line-height: 1.5;
+            white-space: normal;
+        }
+        
+        .print-bill .combine-cell div {
+            margin-top: 2px;
+        }
+    }
+    
+    @media screen {
+        .print-bill {
+            display: none;
+        }
+    }
+</style>
+
+<div class="no-print">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5>账单详情 - <%= bill.bill_number %></h5>
+        <div>
+            <a href="/customers/detail/<%= customer.id %>" class="btn btn-outline-secondary btn-sm me-2">返回客户详情</a>
+            <button class="btn btn-warning btn-sm me-2" disabled>标记为已付款（待实现）</button>
+            <button class="btn btn-success btn-sm" onclick="window.print()">打印账单</button>
+        </div>
+    </div>
+
+    <!-- 账单导航和搜索 -->
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-4">
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-outline-primary" onclick="navigateBill('prev')" id="prevBillBtn">
+                            <i class="bi bi-chevron-left"></i> 上一期
+                        </button>
+                        <button type="button" class="btn btn-outline-primary" onclick="navigateBill('next')" id="nextBillBtn">
+                            下一期 <i class="bi bi-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-5">
+                    <div class="input-group">
+                        <span class="input-group-text">账期搜索</span>
+                        <input type="date" class="form-control" id="billDateSearch" placeholder="选择日期">
+                        <button class="btn btn-primary" type="button" onclick="searchBillByDate()">
+                            <i class="bi bi-search"></i> 查询
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-3 text-end">
+                    <small class="text-muted">当前账期：<%= moment(bill.period_start).format('YYYY/MM/DD') %> - <%= moment(bill.period_end).format('YYYY/MM/DD') %></small>
+                </div>
+            </div>
+            
+            <!-- 调整账期功能 -->
+            <div class="row mt-3 pt-3 border-top">
+                <div class="col-md-12">
+                    <div class="alert alert-info mb-2" role="alert">
+                        <i class="bi bi-info-circle"></i> <strong>调整账期：</strong>修改本期止日期可调整账单周期，下期账单的本期起将自动使用此日期
+                    </div>
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <span class="input-group-text">调整本期止日期</span>
+                                <input type="date" class="form-control" id="newPeriodEnd" value="<%= moment(bill.period_end).format('YYYY-MM-DD') %>">
+                                <button class="btn btn-warning" type="button" onclick="adjustPeriodEnd()">
+                                    <i class="bi bi-calendar-check"></i> 确认调整
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="text-danger"><i class="bi bi-exclamation-triangle"></i> 注意：调整后将重新计算账单金额，并影响下期账单起始日期</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5 class="text-center mb-3"><%= customer.name %> - <%= bill.bill_number %></h5>
+            <div class="row mb-2">
+                <div class="col-md-3">客户编号：<strong><%= account ? account.customer_code : '—' %></strong></div>
+                <div class="col-md-3">客户名称：<strong><%= customer.name %></strong></div>
+                <div class="col-md-3">地址：<strong><%= customer.address || '—' %></strong></div>
+                <div class="col-md-3">电话：<strong><%= customer.phone || '—' %></strong></div>
+            </div>
+            <div class="row mb-2">
+                <div class="col-md-3">账期：<strong><%= moment(bill.period_start).format('YYYY/MM/DD') %> 至 <%= moment(bill.period_end).format('YYYY/MM/DD') %></strong></div>
+                <div class="col-md-3">账单日期：<strong><%= moment(bill.bill_date).format('YYYY/MM/DD') %></strong></div>
+                <div class="col-md-3">状态：<span class="badge bg-warning text-dark">未付费</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered align-middle">
+                    <thead>
+                        <tr>
+                            <th>订单号</th>
+                            <th>设备编号</th>
+                            <th>产品名称</th>
+                            <th>规格配置</th>
+                            <th>数量</th>
+                            <th>月租金</th>
+                            <th>日租金</th>
+                            <th>起租日期</th>
+                            <th>本期起</th>
+                            <th>本期止</th>
+                            <th>月数</th>
+                            <th>天数</th>
+                            <th>金额</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% if (items && items.length > 0) { %>
+                            <% items.forEach(item => { 
+                                const productName = item.product_name || item.device_name || '-';
+                                const specifications = item.specifications || '-';
+                                const hasAdjustments = item.adjustment_details && item.adjustment_details.length > 0;
+                            %>
+                                <% if (hasAdjustments) { %>
+                                    <!-- 如果有租金调整，显示分段明细 -->
+                                    <% item.adjustment_details.forEach((segment, segIdx) => { %>
+                                        <tr <% if (segIdx > 0) { %>style="border-top: 2px solid #dee2e6;"<% } %>>
+                                            <% if (segIdx === 0) { %>
+                                                <td rowspan="<%= item.adjustment_details.length %>"><%= item.order_number %></td>
+                                                <td rowspan="<%= item.adjustment_details.length %>"><%= item.device_code || item.serial_number || '-' %></td>
+                                                <td rowspan="<%= item.adjustment_details.length %>"><%= productName %></td>
+                                                <td rowspan="<%= item.adjustment_details.length %>"><%= specifications %></td>
+                                                <td rowspan="<%= item.adjustment_details.length %>">1</td>
+                                            <% } %>
+                                            <td>¥<%= segment.monthlyRate %> <small class="text-muted">(<%= segment.label %>)</small></td>
+                                            <td>¥<%= segment.dailyRate %></td>
+                                            <% if (segIdx === 0) { %>
+                                                <td rowspan="<%= item.adjustment_details.length %>"><%= item.start_date ? moment(item.start_date).format('YYYY/MM/DD') : '-' %></td>
+                                            <% } %>
+                                            <td><%= moment(segment.start).format('YYYY/MM/DD') %></td>
+                                            <td><%= moment(segment.end).format('YYYY/MM/DD') %></td>
+                                            <td colspan="1">-</td>
+                                            <td><%= segment.days %></td>
+                                            <td>¥<%= segment.amount %></td>
+                                        </tr>
+                                    <% }) %>
+                                    <!-- 合计行 -->
+                                    <tr style="background-color: #f8f9fa; font-weight: bold;">
+                                        <td colspan="5"></td>
+                                        <td colspan="2">小计</td>
+                                        <td colspan="3"></td>
+                                        <td>-</td>
+                                        <td><%= item.days %></td>
+                                        <td>¥<%= (Number(item.consumed_amount) || 0).toFixed(2) %></td>
+                                    </tr>
+                                <% } else { %>
+                                    <!-- 没有租金调整，显示单行 -->
+                                    <tr>
+                                        <td><%= item.order_number %></td>
+                                        <td><%= item.device_code || item.serial_number || '-' %></td>
+                                        <td><%= productName %></td>
+                                        <td><%= specifications %></td>
+                                        <td>1</td>
+                                        <td>¥<%= item.monthly_rate ? (Number(item.monthly_rate) || 0).toFixed(2) : '0.00' %></td>
+                                        <td>¥<%= item.daily_rate ? (Number(item.daily_rate) || 0).toFixed(2) : '0.00' %></td>
+                                        <td><%= item.start_date ? moment(item.start_date).format('YYYY/MM/DD') : '-' %></td>
+                                        <td><%= item.period_start ? moment(item.period_start).format('YYYY/MM/DD') : moment(bill.period_start).format('YYYY/MM/DD') %></td>
+                                        <td><%= item.period_end ? moment(item.period_end).format('YYYY/MM/DD') : moment(bill.period_end).format('YYYY/MM/DD') %></td>
+                                        <td><%= item.months || 0 %></td>
+                                        <td><%= item.days || 0 %></td>
+                                        <td>¥<%= (Number(item.consumed_amount) || 0).toFixed(2) %></td>
+                                    </tr>
+                                <% } %>
+                            <% }) %>
+                        <% } else { %>
+                            <tr>
+                                <td colspan="13" class="text-center text-muted py-4">暂无账单明细</td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+            <div class="text-end mt-3">
+                <div>账单总金额：<strong>¥<%= (Number(typeof billTotalAmount !== 'undefined' ? billTotalAmount : bill.amount) || 0).toFixed(2) %></strong></div>
+                <div>余额：<strong>¥<%= account ? (Number(account.balance) || 0).toFixed(2) : '0.00' %></strong></div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- 打印版本 -->
+<div class="print-bill">
+    <h2>付款明细单</h2>
+    
+    <div class="section-title">一、订单信息<span style="float: right;">打印日期：<%= moment().format('YYYY年MM月DD日') %></span></div>
+    <table class="info-table">
+        <tr>
+            <td width="15%"><strong>客户名称</strong></td>
+            <td width="35%"><%= customer.name %></td>
+            <td width="15%"><strong>客户地址</strong></td>
+            <td width="35%"><%= customer.address || '—' %></td>
+        </tr>
+        <tr>
+            <td><strong>联系人</strong></td>
+            <td colspan="3"><%= customer.contact_person || '—' %>&nbsp;&nbsp;&nbsp;&nbsp;<%= customer.phone || '' %></td>
+        </tr>
+    </table>
+    
+    <div class="section-title">二、明细清单</div>
+    <table class="detail-table">
+        <thead>
+            <tr>
+                <th rowspan="2">订单号</th>
+                <th rowspan="2">设备名称</th>
+                <th rowspan="2">规格型号</th>
+                <th rowspan="2">数量</th>
+                <th rowspan="2">月租金</th>
+                <th rowspan="2">日租金</th>
+                <th rowspan="2">起租日</th>
+                <th colspan="5">上期账单</th>
+                <th colspan="5">本期账单</th>
+                <th rowspan="2">设备价值</th>
+            </tr>
+            <tr>
+                <th>上期起</th>
+                <th>上期止</th>
+                <th>天数</th>
+                <th>月数</th>
+                <th>金额</th>
+                <th>本期起</th>
+                <th>本期止</th>
+                <th>天数</th>
+                <th>月数</th>
+                <th>金额</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% 
+            let totalQuantity = 0;
+            let totalAmount = 0;
+            let lastPeriodTotal = 0;
+            let totalDeviceValue = 0;
+            
+            if (items && items.length > 0) {
+                items.forEach(item => {
+                    const productName = item.product_name || item.device_name || '-';
+                    const specifications = item.specifications || '-';
+                    totalQuantity += 1;
+                    totalAmount += item.consumed_amount || 0;
+                    lastPeriodTotal += item.prev_amount || 0;
+                    // 累加设备价值（采购价 * 1.5）
+                    totalDeviceValue += item.device_value ? (parseFloat(item.device_value) * 1.5) : 0;
+                    
+                    // 上期账单数据
+                    const lastPeriodStart = item.prev_period_start ? moment(item.prev_period_start).format('YYYY-MM-DD') : '-';
+                    const lastPeriodEnd = item.prev_period_end ? moment(item.prev_period_end).format('YYYY-MM-DD') : '-';
+                    const lastPeriodDays = item.prev_days || 0;  // 天数：实际天数
+                    const lastPeriodMonths = item.prev_months || 0;  // 月数：0、1、3、12
+                    const lastPeriodAmount = Number(item.prev_amount || 0);  // 金额：正数
+                    
+                    // 本期账单数据
+                    const currentDays = item.days || 0;  // 天数：实际天数
+                    const currentMonths = item.months || 0;  // 月数：0、1、3、12
+                    const currentAmount = Math.abs(Number(item.consumed_amount || 0));  // 金额：取绝对值显示为正数
+                    
+                    // 设备价值 = 采购价 * 1.5
+                    const deviceValue = item.device_value ? (Number(item.device_value) * 1.5).toFixed(0) : '-';
+            %>
+                <tr>
+                    <td><%= item.order_number %></td>
+                    <td><%= productName %></td>
+                    <td class="col-spec"><%= specifications %></td>
+                    <td>1</td>
+                    <td><%= item.monthly_rate ? item.monthly_rate.toFixed(0) : '0' %></td>
+                    <td><%= item.daily_rate ? item.daily_rate.toFixed(1) : '0.0' %></td>
+                    <td><%= item.start_date ? moment(item.start_date).format('YYYY-MM-DD') : '-' %></td>
+                    <td><%= lastPeriodStart %></td>
+                    <td><%= lastPeriodEnd %></td>
+                    <td><%= lastPeriodDays %></td>
+                    <td><%= lastPeriodMonths %></td>
+                    <td><%= lastPeriodAmount > 0 ? lastPeriodAmount.toFixed(1) : '0.0' %></td>
+                    <td><%= item.period_start ? moment(item.period_start).format('YYYY-MM-DD') : moment(bill.period_start).format('YYYY-MM-DD') %></td>
+                    <td><%= item.period_end ? moment(item.period_end).format('YYYY-MM-DD') : moment(bill.period_end).format('YYYY-MM-DD') %></td>
+                    <td><%= currentDays %></td>
+                    <td><%= currentMonths %></td>
+                    <td><%= currentAmount.toFixed(1) %></td>
+                    <td><%= deviceValue %></td>
+                </tr>
+            <% 
+                });
+            }
+            %>
+            <tr class="summary-row">
+                <td colspan="3"><strong>总计：</strong></td>
+                <td><strong><%= totalQuantity %></strong></td>
+                <td colspan="7"></td>
+                <td><strong><%= Number(lastPeriodTotal || 0).toFixed(1) %></strong></td>
+                <td colspan="4"></td>
+                <td><strong><%= Math.abs(Number(totalAmount || 0)).toFixed(1) %></strong></td>
+                <td><strong><%= Number(totalDeviceValue || 0).toFixed(0) %></strong></td>
+            </tr>
+            <tr>
+                <td colspan="2" rowspan="2" style="vertical-align: middle; text-align: center; font-size: 11px;"><strong>合计</strong></td>
+                <td colspan="16" class="combine-cell" style="padding: 6px 10px;">
+                    <div style="margin-bottom: 8px;">
+                        <strong>本期应付：</strong><span style="font-size: 12px; color: #000;"><%= Math.abs(Number(totalAmount || 0)).toFixed(0) %>元</span>
+                    </div>
+                    <div style="color: #666; font-size: 10px; line-height: 1.6;">
+                        （本期应付[<%= Math.abs(Number(totalAmount || 0)).toFixed(0) %>]元 = 本期账单金额[<%= Math.abs(Number(totalAmount || 0)).toFixed(0) %>]元 + 上期欠款金额[<%= Number(account ? account.balance : 0).toFixed(0) %>]元）
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="16" class="combine-cell" style="padding: 8px 10px; background-color: #fafafa;">
+                    <div style="margin-bottom: 6px;"><strong style="color: #000;">付款信息</strong></div>
+                    <div style="line-height: 1.8; color: #333;">
+                        <span style="display: inline-block; margin-right: 20px;">
+                            <strong>账户名称：</strong>厦门旭租科技有限公司
+                        </span>
+                        <span style="display: inline-block; margin-right: 20px;">
+                            <strong>账号：</strong>6232 7141 0000 0602 092
+                        </span>
+                        <span style="display: inline-block;">
+                            <strong>开户行：</strong>工商银行厦门浩悦支行
+                        </span>
+                    </div>
+                    <div style="margin-top: 4px; color: #666; font-size: 10px;">
+                        顾请转账（后期租金都转到此对公账号）
+                    </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    
+    <div class="footer-info">
+        <div><strong>签收人：</strong>_______________</div>
+        <div><strong>联系电话：</strong>_______________</div>
+        <div><strong>日期：</strong>_______________</div>
+    </div>
+</div>
+
+<%- include('../base-footer') %>
+
+<script>
+    const customerId = <%= customer.id %>;
+    const currentBillId = <%= bill.id %>;
+    const currentPeriodEnd = '<%= moment(bill.period_end).format('YYYY-MM-DD') %>';
+    
+    // 页面加载时检查是否有上一期和下一期账单
+    document.addEventListener('DOMContentLoaded', function() {
+        checkAdjacentBills();
+    });
+    
+    // 检查上一期和下一期账单是否存在
+    function checkAdjacentBills() {
+        // 检查上一期
+        fetch(`/api/customer-billing/adjacent-bill/${customerId}?direction=prev&currentBillId=${currentBillId}`)
+            .then(response => response.json())
+            .then(data => {
+                const prevBtn = document.getElementById('prevBillBtn');
+                if (!data.success || !data.data) {
+                    prevBtn.disabled = true;
+                }
+            });
+        
+        // 检查下一期
+        fetch(`/api/customer-billing/adjacent-bill/${customerId}?direction=next&currentBillId=${currentBillId}`)
+            .then(response => response.json())
+            .then(data => {
+                const nextBtn = document.getElementById('nextBillBtn');
+                if (!data.success || !data.data) {
+                    nextBtn.disabled = true;
+                }
+            });
+    }
+    
+    // 导航到上一期或下一期账单
+    function navigateBill(direction) {
+        fetch(`/api/customer-billing/adjacent-bill/${customerId}?direction=${direction}&currentBillId=${currentBillId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.data) {
+                    window.location.href = `/customers/${customerId}/bills/${data.data.id}`;
+                } else {
+                    alert(direction === 'prev' ? '没有更早的账单了' : '没有更新的账单了');
+                }
+            })
+            .catch(error => {
+                console.error('查询账单失败:', error);
+                alert('查询账单失败');
+            });
+    }
+    
+    // 按日期搜索账单
+    function searchBillByDate() {
+        const dateInput = document.getElementById('billDateSearch').value;
+        if (!dateInput) {
+            alert('请选择日期');
+            return;
+        }
+        
+        fetch(`/api/customer-billing/search-bill/${customerId}?date=${dateInput}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.data) {
+                    window.location.href = `/customers/${customerId}/bills/${data.data.id}`;
+                } else {
+                    alert('未找到该日期所在账期的账单');
+                }
+            })
+            .catch(error => {
+                console.error('搜索账单失败:', error);
+                alert('搜索账单失败');
+            });
+    }
+    
+    // 调整账期
+    function adjustPeriodEnd() {
+        const newPeriodEnd = document.getElementById('newPeriodEnd').value;
+        if (!newPeriodEnd) {
+            alert('请选择新的本期止日期');
+            return;
+        }
+        
+        const currentPeriodEnd = '<%= moment(bill.period_end).format('YYYY-MM-DD') %>';
+        if (newPeriodEnd === currentPeriodEnd) {
+            alert('新日期与当前日期相同，无需调整');
+            return;
+        }
+        
+        if (!confirm(`确认要将本期止日期从 ${currentPeriodEnd} 调整为 ${newPeriodEnd} 吗？\n\n调整后将：\n1. 重新计算本期账单金额\n2. 下期账单的本期起日期将变为 ${newPeriodEnd}\n3. 账单周期将发生变化`)) {
+            return;
+        }
+        
+        const btn = event.target;
+        const originalHTML = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-hourglass-split"></i> 调整中...';
+        
+        fetch('/api/customer-billing/adjust-period-end', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                billId: <%= bill.id %>,
+                customerId: <%= customer.id %>,
+                newPeriodEnd: newPeriodEnd
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = originalHTML;
+            
+            if (data.success) {
+                alert('账期调整成功！页面将刷新以显示新的账单数据');
+                window.location.reload();
+            } else {
+                alert('调整失败：' + data.message);
+            }
+        })
+        .catch(error => {
+            btn.disabled = false;
+            btn.innerHTML = originalHTML;
+            console.error('调整账期失败:', error);
+            alert('调整失败，请检查网络连接');
+        });
+    }
+</script>

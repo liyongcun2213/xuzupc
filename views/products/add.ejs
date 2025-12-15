@@ -1,0 +1,921 @@
+<%- include('../layout') %>
+
+<div class="card">
+    <div class="card-header">
+        添加产品
+    </div>
+    <div class="card-body">
+        <form action="/products/add" method="post" id="productForm">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="name" class="form-label">产品名称 <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="name" name="name" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="specifications" class="form-label">产品型号</label>
+                    <input type="text" class="form-control" id="specifications" name="specifications" placeholder="会根据配置自动填充，可手动修改">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="category_id" class="form-label">产品类别 <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <select class="form-select" id="category_id" name="category_id" required>
+                            <option value="">请选择类别</option>
+                            <% categories.forEach(category => { %>
+                            <option value="<%= category.id %>"><%= category.name %></option>
+                            <% }) %>
+                        </select>
+                        <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+                            <i class="fas fa-plus"></i> 添加
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 电脑主机配置部分 -->
+            <div id="computerConfig" style="display:none;">
+                <hr>
+                <h5>电脑主机配置</h5>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="cpu" class="form-label">CPU</label>
+                        <select class="form-select cpu-select" name="cpu">
+                            <option value="">请选择CPU</option>
+                            <% cpuList.forEach(item => { %>
+                            <option value="<%= item.id %>" data-price="<%= item.latest_price || item.unit_price || item.purchase_price || 0 %>" data-label="<%= item.model || item.name %>"><%= item.brand ? (item.brand + ' ' + (item.model || item.name)) : (item.model || item.name) %> (¥<%= item.latest_price || item.unit_price || item.purchase_price || 0 %>)</option>
+                            <% }) %>
+                        </select>
+                        <small class="text-muted">CPU价格: <span class="cpu-price">¥0.00</span></small>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="cooler" class="form-label">散热器</label>
+                        <select class="form-select cooler-select" name="cooler">
+                            <option value="">请选择散热器</option>
+                            <% coolerList.forEach(item => { %>
+                            <option value="<%= item.id %>" data-price="<%= (item.latest_price || item.unit_price || item.purchase_price || 0) %>" data-label="<%= item.model || item.name %>"><%= item.brand ? (item.brand + ' ' + (item.model || item.name)) : (item.model || item.name) %> (¥<%= (item.latest_price || item.unit_price || item.purchase_price || 0) %>)</option>
+                            <% }) %>
+                        </select>
+                        <small class="text-muted">散热器价格: <span class="cooler-price">¥0.00</span></small>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="motherboard" class="form-label">主板</label>
+                        <select class="form-select motherboard-select" name="motherboard">
+                            <option value="">请选择主板</option>
+                            <% motherboardList.forEach(item => { %>
+                            <option value="<%= item.id %>" data-price="<%= (item.latest_price || item.unit_price || item.purchase_price || 0) %>" data-label="<%= item.model || item.name %>"><%= item.brand ? (item.brand + ' ' + (item.model || item.name)) : (item.model || item.name) %> (¥<%= (item.latest_price || item.unit_price || item.purchase_price || 0) %>)</option>
+                            <% }) %>
+                        </select>
+                        <small class="text-muted">主板价格: <span class="motherboard-price">¥0.00</span></small>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="memory" class="form-label">内存</label>
+                        <select class="form-select memory-select" name="memory">
+                            <option value="">请选择内存</option>
+                            <% memoryList.forEach(item => { %>
+                            <option value="<%= item.id %>" data-price="<%= (item.latest_price || item.unit_price || item.purchase_price || 0) %>" data-label="<%= item.model || item.name %>"><%= item.brand ? (item.brand + ' ' + (item.model || item.name)) : (item.model || item.name) %> (¥<%= (item.latest_price || item.unit_price || item.purchase_price || 0) %>)</option>
+                            <% }) %>
+                        </select>
+                        <small class="text-muted">内存价格: <span class="memory-price">¥0.00</span></small>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="storage" class="form-label">硬盘</label>
+                        <select class="form-select storage-select" name="storage">
+                            <option value="">请选择硬盘</option>
+                            <% storageList.forEach(item => { %>
+                            <option value="<%= item.id %>" data-price="<%= (item.latest_price || item.unit_price || item.purchase_price || 0) %>" data-label="<%= item.model || item.name %>"><%= item.brand ? (item.brand + ' ' + (item.model || item.name)) : (item.model || item.name) %> (¥<%= (item.latest_price || item.unit_price || item.purchase_price || 0) %>)</option>
+                            <% }) %>
+                        </select>
+                        <small class="text-muted">硬盘价格: <span class="storage-price">¥0.00</span></small>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="graphics" class="form-label">显卡</label>
+                        <select class="form-select graphics-select" name="graphics">
+                            <option value="">请选择显卡</option>
+                            <% graphicsList.forEach(item => { %>
+                            <option value="<%= item.id %>" data-price="<%= (item.latest_price || item.unit_price || item.purchase_price || 0) %>" data-label="<%= item.model || item.name %>"><%= item.brand ? (item.brand + ' ' + (item.model || item.name)) : (item.model || item.name) %> (¥<%= (item.latest_price || item.unit_price || item.purchase_price || 0) %>)</option>
+                            <% }) %>
+                        </select>
+                        <small class="text-muted">显卡价格: <span class="graphics-price">¥0.00</span></small>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="case" class="form-label">机箱</label>
+                        <select class="form-select case-select" name="case">
+                            <option value="">请选择机箱</option>
+                            <% caseList.forEach(item => { %>
+                            <option value="<%= item.id %>" data-price="<%= (item.latest_price || item.unit_price || item.purchase_price || 0) %>" data-label="<%= item.model || item.name %>"><%= item.brand ? (item.brand + ' ' + (item.model || item.name)) : (item.model || item.name) %> (¥<%= (item.latest_price || item.unit_price || item.purchase_price || 0) %>)</option>
+                            <% }) %>
+                        </select>
+                        <small class="text-muted">机箱价格: <span class="case-price">¥0.00</span></small>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="power" class="form-label">电源</label>
+                        <select class="form-select power-select" name="power">
+                            <option value="">请选择电源</option>
+                            <% powerList.forEach(item => { %>
+                            <option value="<%= item.id %>" data-price="<%= (item.latest_price || item.unit_price || item.purchase_price || 0) %>" data-label="<%= item.model || item.name %>"><%= item.brand ? (item.brand + ' ' + (item.model || item.name)) : (item.model || item.name) %> (¥<%= (item.latest_price || item.unit_price || item.purchase_price || 0) %>)</option>
+                            <% }) %>
+                        </select>
+                        <small class="text-muted">电源价格: <span class="power-price">¥0.00</span></small>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="monitor" class="form-label">显示器</label>
+                        <select class="form-select monitor-select" name="monitor">
+                            <option value="">请选择显示器</option>
+                            <% monitorList.forEach(item => { %>
+                            <option value="<%= item.id %>" data-price="<%= item.unit_price %>" data-label="<%= item.model || item.name %>"><%= item.brand ? (item.brand + ' ' + (item.model || item.name)) : (item.model || item.name) %> (¥<%= item.unit_price %>)</option>
+                            <% }) %>
+                        </select>
+                        <small class="text-muted">显示器价格: <span class="monitor-price">¥0.00</span></small>
+                    </div>
+                </div>
+            <div class="row mt-3">
+                <div class="col-md-12">
+                    <div class="alert alert-info">
+                        <strong>总价计算：</strong> 
+                        <span id="totalPrice">¥0.00</span> | 
+                        <strong>日租金建议：</strong> 
+                        <span id="dailyRent">¥0.00</span> | 
+                        <strong>月租金建议：</strong> 
+                        <span id="monthlyRent">¥0.00</span>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-secondary" id="testCalculateButton">测试计算价格</button>
+                </div>
+            </div>
+            </div>
+            
+            <!-- 打印机配置部分 -->
+            <div id="printerConfig" style="display:none;">
+                <hr>
+                <h5>打印机配置</h5>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="brand" class="form-label">品牌 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="brand" name="brand">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="model" class="form-label">型号 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="model" name="model">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="printer_type" class="form-label">类型 <span class="text-danger">*</span></label>
+                        <select class="form-select" id="printer_type" name="printer_type">
+                            <option value="">请选择打印机类型</option>
+                            <option value="激光打印机">激光打印机</option>
+                            <option value="喷墨打印机">喷墨打印机</option>
+                            <option value="针式打印机">针式打印机</option>
+                            <option value="热敏打印机">热敏打印机</option>
+                            <option value="多功能一体机">多功能一体机</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="purchase_price" class="form-label">采购价格 <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" min="0" class="form-control" id="purchase_price" name="purchase_price">
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-12">
+                        <div class="alert alert-info">
+                            <strong>日租金建议：</strong> 
+                            <span id="printerDailyRent">¥0.00</span> | 
+                            <strong>月租金建议：</strong> 
+                            <span id="printerMonthlyRent">¥0.00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 笔记本电脑配置部分 -->
+            <div id="laptopConfig" style="display:none;">
+                <hr>
+                <h5>笔记本电脑配置</h5>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="laptop_brand" class="form-label">品牌 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="laptop_brand" name="laptop_brand">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="laptop_model" class="form-label">型号 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="laptop_model" name="laptop_model">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="laptop_cpu" class="form-label">CPU</label>
+                        <input type="text" class="form-control" id="laptop_cpu" name="laptop_cpu" placeholder="如: Intel i5-1135G7">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="laptop_memory" class="form-label">内存</label>
+                        <input type="text" class="form-control" id="laptop_memory" name="laptop_memory" placeholder="如: 16GB DDR4">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="laptop_storage" class="form-label">硬盘</label>
+                        <input type="text" class="form-control" id="laptop_storage" name="laptop_storage" placeholder="如: 512GB SSD">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="laptop_graphics" class="form-label">显卡</label>
+                        <input type="text" class="form-control" id="laptop_graphics" name="laptop_graphics" placeholder="如: 集成显卡 / MX450">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="laptop_screen" class="form-label">屏幕</label>
+                        <input type="text" class="form-control" id="laptop_screen" name="laptop_screen" placeholder="如: 14英寸 FHD IPS">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="laptop_purchase_price" class="form-label">采购价格 <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" min="0" class="form-control" id="laptop_purchase_price" name="laptop_purchase_price">
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-12">
+                        <div class="alert alert-info">
+                            <strong>日租金建议：</strong> 
+                            <span id="laptopDailyRent">¥0.00</span> | 
+                            <strong>月租金建议：</strong> 
+                            <span id="laptopMonthlyRent">¥0.00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 通用字段 -->
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="purchase_price" class="form-label">采购价格 <span class="text-danger">*</span></label>
+                    <input type="number" step="0.01" min="0" class="form-control" id="purchase_price" name="purchase_price" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="rental_price_per_day" class="form-label">日租金</label>
+                    <input type="number" step="0.01" min="0" class="form-control" id="rental_price_per_day" name="rental_price_per_day" readonly>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="rental_price_per_month" class="form-label">月租金</label>
+                    <input type="number" step="0.01" min="0" class="form-control" id="rental_price_per_month" name="rental_price_per_month" readonly>
+                </div>
+            </div>
+            <input type="hidden" id="total_price" name="total_price" value="0">
+            <input type="hidden" id="calculated_daily_rent" name="calculated_daily_rent" value="0">
+            <input type="hidden" id="calculated_monthly_rent" name="calculated_monthly_rent" value="0">
+            
+            <div class="d-flex justify-content-end">
+                <a href="/products" class="btn btn-secondary me-2">取消</a>
+                <button type="submit" class="btn btn-primary">保存</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 添加类别模态框 -->
+<div class="modal fade" id="addCategoryModal" tabindex="-1" aria-labelledby="addCategoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addCategoryModalLabel">添加产品类别</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addCategoryForm">
+                    <div class="mb-3">
+                        <label for="newCategoryName" class="form-label">类别名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="newCategoryName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="newCategoryDescription" class="form-label">描述</label>
+                        <textarea class="form-control" id="newCategoryDescription" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="saveCategoryBtn">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+</main>
+</div>
+</div>
+
+<script>
+// 使用window.onload确保页面完全加载后执行
+window.onload = function() {
+    // 类别映射表（从服务器获取）
+    const categoryMap = <%- JSON.stringify(categoryMap) %>;
+    
+    const categorySelect = document.getElementById('category_id');
+    const computerConfig = document.getElementById('computerConfig');
+    const printerConfig = document.getElementById('printerConfig');
+    const laptopConfig = document.getElementById('laptopConfig');
+    const specificationsInput = document.getElementById('specifications');
+    const printerBrandInput = document.getElementById('brand');
+    const printerModelInput = document.getElementById('model');
+    const laptopBrandInput = document.getElementById('laptop_brand');
+    const laptopModelInput = document.getElementById('laptop_model');
+    
+    // 配件价格元素
+    const cpuPrice = document.querySelector('.cpu-price');
+    const coolerPrice = document.querySelector('.cooler-price');
+    const motherboardPrice = document.querySelector('.motherboard-price');
+    const memoryPrice = document.querySelector('.memory-price');
+    const storagePrice = document.querySelector('.storage-price');
+    const graphicsPrice = document.querySelector('.graphics-price');
+    const casePrice = document.querySelector('.case-price');
+    const powerPrice = document.querySelector('.power-price');
+    const monitorPrice = document.querySelector('.monitor-price');
+    
+    // 总价和租金元素
+    const totalPrice = document.getElementById('totalPrice');
+    const dailyRent = document.getElementById('dailyRent');
+    const monthlyRent = document.getElementById('monthlyRent');
+    
+    // 隐藏输入框
+    const totalPriceInput = document.getElementById('total_price');
+    const dailyRentInput = document.getElementById('calculated_daily_rent');
+    const monthlyRentInput = document.getElementById('calculated_monthly_rent');
+    
+    // 打印机价格元素
+    const printerPurchasePrice = document.getElementById('purchase_price');
+    const printerDailyRent = document.getElementById('printerDailyRent');
+    const printerMonthlyRent = document.getElementById('printerMonthlyRent');
+    
+    // 笔记本电脑价格元素
+    const laptopPurchasePrice = document.getElementById('laptop_purchase_price');
+    const laptopDailyRent = document.getElementById('laptopDailyRent');
+    const laptopMonthlyRent = document.getElementById('laptopMonthlyRent');
+    
+    function updateComputerSpecifications() {
+        if (!specificationsInput) return;
+        
+        // 获取当前选择的类别
+        const selectedOption = categorySelect.options[categorySelect.selectedIndex];
+        const categoryName = selectedOption ? selectedOption.text.trim() : '';
+        
+        // 只有在选择了电脑主机类别时才执行
+        if (!categoryName.includes('电脑主机') && !categoryName.includes('台式电脑')) {
+            console.log('当前不是电脑主机类别，跳updateComputerSpecifications');
+            return;
+        }
+
+        const cpuSelect = document.querySelector('.cpu-select');
+        const memorySelect = document.querySelector('.memory-select');
+        const storageSelect = document.querySelector('.storage-select');
+        const graphicsSelect = document.querySelector('.graphics-select');
+        const monitorSelect = document.querySelector('.monitor-select');
+
+        const parts = [];
+
+        if (cpuSelect && cpuSelect.value) {
+            const option = cpuSelect.options[cpuSelect.selectedIndex];
+            parts.push(option.dataset.label || option.text.trim());
+        }
+        if (memorySelect && memorySelect.value) {
+            const option = memorySelect.options[memorySelect.selectedIndex];
+            parts.push(option.dataset.label || option.text.trim());
+        }
+        if (storageSelect && storageSelect.value) {
+            const option = storageSelect.options[storageSelect.selectedIndex];
+            parts.push(option.dataset.label || option.text.trim());
+        }
+        if (graphicsSelect && graphicsSelect.value) {
+            const option = graphicsSelect.options[graphicsSelect.selectedIndex];
+            parts.push(option.dataset.label || option.text.trim());
+        }
+        if (monitorSelect && monitorSelect.value) {
+            const option = monitorSelect.options[monitorSelect.selectedIndex];
+            parts.push(option.dataset.label || option.text.trim());
+        }
+
+        specificationsInput.value = parts.join('\');
+    }
+
+    function updatePrinterSpecifications() {
+        if (!specificationsInput) return;
+        
+        // 获取当前选择的类别
+        const selectedOption = categorySelect.options[categorySelect.selectedIndex];
+        const categoryName = selectedOption ? selectedOption.text.trim() : '';
+        
+        // 只有在选择了打印机类别时才执行
+        if (!categoryName.includes('打印机')) {
+            console.log('当前不是打印机类别，跳updatePrinterSpecifications');
+            return;
+        }
+
+        const model = printerModelInput ? printerModelInput.value.trim() : '';
+
+        if (model) {
+            specificationsInput.value = model;
+        } else {
+            specificationsInput.value = '';
+        }
+    }
+
+    function updateLaptopSpecifications() {
+        console.log('执行updateLaptopSpecifications函数');
+        
+        // 确保所有元素都存在
+        if (!specificationsInput || !laptopBrandInput || !laptopModelInput) {
+            console.log('缺少必要元素，跳过更新');
+            return;
+        }
+
+        // 获取当前选择的类别
+        const selectedOption = categorySelect.options[categorySelect.selectedIndex];
+        const categoryName = selectedOption ? selectedOption.text.trim() : '';
+        
+        // 只有在选择了笔记本电脑类别时才更新
+        if (!categoryName.includes('笔记本电脑')) {
+            console.log('当前不是笔记本电脑类别，跳过更新');
+            return;
+        }
+
+        const brand = laptopBrandInput.value.trim();
+        const model = laptopModelInput.value.trim();
+        console.log('获取品牌和型号:', { brand, model });
+        
+        const oldValue = specificationsInput.value;
+
+        if (brand && model) {
+            specificationsInput.value = `${brand} ${model}`;
+            console.log('设置产品型号为:', specificationsInput.value);
+        } else if (model) {
+            specificationsInput.value = model;
+            console.log('设置产品型号为(仅型号):', specificationsInput.value);
+        } else {
+            specificationsInput.value = '';
+            console.log('清空产品型号');
+        }
+        
+        console.log('产品型号是否变化:', oldValue !== specificationsInput.value);
+    }
+
+    // 监听类别变化
+    categorySelect.addEventListener('change', function() {
+        const categoryId = this.value;
+        const selectedOption = this.options[this.selectedIndex];
+        const categoryName = selectedOption.text.trim();
+        
+        // 添加调试信息
+        console.log('类别变化触发');
+        console.log('类别ID:', categoryId);
+        console.log('类别名称:', categoryName);
+        console.log('是否匹配电脑主机:', categoryName.includes('电脑主机'));
+        console.log('是否匹配台式电脑:', categoryName.includes('台式电脑'));
+        console.log('是否匹配笔记本电脑:', categoryName.includes('笔记本电脑'));
+        
+        // 隐藏所有配置区域
+        computerConfig.style.display = 'none';
+        printerConfig.style.display = 'none';
+        laptopConfig.style.display = 'none';
+        
+        // 根据类别名称显示相应配置并更新产品型号
+        if (categoryName.includes('电脑主机') || categoryName.includes('台式电脑')) { // 电脑主机
+            console.log('显示电脑主机配置');
+            computerConfig.style.display = 'block';
+            updateComputerSpecifications();
+        } else if (categoryName.includes('笔记本电脑')) { // 笔记本电脑
+            console.log('显示笔记本电脑配置');
+            laptopConfig.style.display = 'block';
+            updateLaptopSpecifications();
+        } else if (categoryName.includes('打印机')) { // 打印机
+            console.log('显示打印机配置');
+            printerConfig.style.display = 'block';
+            updatePrinterSpecifications();
+        } else {
+            console.log('隐藏所有配置');
+            if (specificationsInput) {
+                specificationsInput.value = '';
+            }
+        }
+    });
+    
+    // 计算总价和租金函数
+    function calculateComputerTotal() {
+        console.log('计算总价函数被调用');
+        let total = 0;
+        
+        // 获取各配件价格
+        const cpuSelect = document.querySelector('.cpu-select');
+        const coolerSelect = document.querySelector('.cooler-select');
+        const motherboardSelect = document.querySelector('.motherboard-select');
+        const memorySelect = document.querySelector('.memory-select');
+        const storageSelect = document.querySelector('.storage-select');
+        const graphicsSelect = document.querySelector('.graphics-select');
+        const caseSelect = document.querySelector('.case-select');
+        const powerSelect = document.querySelector('.power-select');
+        const monitorSelect = document.querySelector('.monitor-select');
+        
+        console.log('CPU选择元素:', cpuSelect);
+        if (cpuSelect) {
+            console.log('CPU选择值:', cpuSelect.value);
+            if (cpuSelect.value) {
+                console.log('CPU选择索引:', cpuSelect.selectedIndex);
+                console.log('CPU选项:', cpuSelect.options[cpuSelect.selectedIndex]);
+                console.log('CPU价格属性:', cpuSelect.options[cpuSelect.selectedIndex].dataset.price);
+            }
+        }
+        
+        // CPU
+        if (cpuSelect && cpuSelect.value) {
+            const selectedOption = cpuSelect.options[cpuSelect.selectedIndex];
+            const price = parseFloat(selectedOption.dataset.price) || 0;
+            console.log('CPU价格:', price);
+            total += price;
+            if (cpuPrice) {
+                cpuPrice.textContent = '¥' + price.toFixed(2);
+                console.log('CPU价格显示已更新');
+            }
+        } else if (cpuPrice) {
+            cpuPrice.textContent = '¥0.00';
+            console.log('CPU未选择，价格显示已重置为0');
+        }
+
+        // 散热器
+        if (coolerSelect && coolerSelect.value) {
+            const price = parseFloat(coolerSelect.options[coolerSelect.selectedIndex].dataset.price) || 0;
+            total += price;
+            if (coolerPrice) coolerPrice.textContent = '¥' + price.toFixed(2);
+        } else if (coolerPrice) {
+            coolerPrice.textContent = '¥0.00';
+        }
+
+        // 主板
+        if (motherboardSelect && motherboardSelect.value) {
+            const price = parseFloat(motherboardSelect.options[motherboardSelect.selectedIndex].dataset.price) || 0;
+            total += price;
+            if (motherboardPrice) motherboardPrice.textContent = '¥' + price.toFixed(2);
+        } else if (motherboardPrice) {
+            motherboardPrice.textContent = '¥0.00';
+        }
+
+        // 内存
+        if (memorySelect && memorySelect.value) {
+            const price = parseFloat(memorySelect.options[memorySelect.selectedIndex].dataset.price) || 0;
+            total += price;
+            if (memoryPrice) memoryPrice.textContent = '¥' + price.toFixed(2);
+        } else if (memoryPrice) {
+            memoryPrice.textContent = '¥0.00';
+        }
+
+        // 硬盘
+        if (storageSelect && storageSelect.value) {
+            const price = parseFloat(storageSelect.options[storageSelect.selectedIndex].dataset.price) || 0;
+            total += price;
+            if (storagePrice) storagePrice.textContent = '¥' + price.toFixed(2);
+        } else if (storagePrice) {
+            storagePrice.textContent = '¥0.00';
+        }
+
+        // 显卡
+        if (graphicsSelect && graphicsSelect.value) {
+            const price = parseFloat(graphicsSelect.options[graphicsSelect.selectedIndex].dataset.price) || 0;
+            total += price;
+            if (graphicsPrice) graphicsPrice.textContent = '¥' + price.toFixed(2);
+        } else if (graphicsPrice) {
+            graphicsPrice.textContent = '¥0.00';
+        }
+
+        // 机箱
+        if (caseSelect && caseSelect.value) {
+            const price = parseFloat(caseSelect.options[caseSelect.selectedIndex].dataset.price) || 0;
+            total += price;
+            if (casePrice) casePrice.textContent = '¥' + price.toFixed(2);
+        } else if (casePrice) {
+            casePrice.textContent = '¥0.00';
+        }
+
+        // 电源
+        if (powerSelect && powerSelect.value) {
+            const price = parseFloat(powerSelect.options[powerSelect.selectedIndex].dataset.price) || 0;
+            total += price;
+            if (powerPrice) powerPrice.textContent = '¥' + price.toFixed(2);
+        } else if (powerPrice) {
+            powerPrice.textContent = '¥0.00';
+        }
+
+        // 显示器
+        if (monitorSelect && monitorSelect.value) {
+            const price = parseFloat(monitorSelect.options[monitorSelect.selectedIndex].dataset.price) || 0;
+            total += price;
+            if (monitorPrice) monitorPrice.textContent = '¥' + price.toFixed(2);
+        } else if (monitorPrice) {
+            monitorPrice.textContent = '¥0.00';
+        }
+        
+        // 计算租金 (月租金 = 总价/15, 日租金 = 月租金/30)
+        const monthly = total / 15;
+        const daily = monthly / 30;
+        
+        // 更新显示
+        totalPrice.textContent = '¥' + total.toFixed(2);
+        dailyRent.textContent = '¥' + daily.toFixed(2);
+        monthlyRent.textContent = '¥' + monthly.toFixed(2);
+        
+        // 更新隐藏字段
+        totalPriceInput.value = total.toFixed(2);
+        dailyRentInput.value = daily.toFixed(2);
+        monthlyRentInput.value = monthly.toFixed(2);
+        
+        // 更新采购价格输入框
+        const purchasePriceInput = document.getElementById('purchase_price');
+        if (purchasePriceInput && total > 0) {
+            purchasePriceInput.value = total.toFixed(2);
+        }
+        
+        // 更新日租金和月租金输入框
+        const dailyRentInputField = document.getElementById('rental_price_per_day');
+        const monthlyRentInputField = document.getElementById('rental_price_per_month');
+        if (dailyRentInputField && daily > 0) {
+            dailyRentInputField.value = daily.toFixed(2);
+        }
+        if (monthlyRentInputField && monthly > 0) {
+            monthlyRentInputField.value = monthly.toFixed(2);
+        }
+    }
+    
+    // 计算打印机租金
+    function calculatePrinterRent() {
+        const price = parseFloat(printerPurchasePrice.value) || 0;
+        
+        // 计算租金
+        const monthly = price / 15;
+        const daily = monthly / 30;
+        
+        // 更新显示
+        printerDailyRent.textContent = '¥' + daily.toFixed(2);
+        printerMonthlyRent.textContent = '¥' + monthly.toFixed(2);
+        
+        // 更新隐藏字段
+        totalPriceInput.value = price.toFixed(2);
+        dailyRentInput.value = daily.toFixed(2);
+        monthlyRentInput.value = monthly.toFixed(2);
+    }
+    
+    // 计算笔记本电脑租金
+    function calculateLaptopRent() {
+        const price = parseFloat(laptopPurchasePrice.value) || 0;
+        
+        // 计算租金
+        const monthly = price / 15;
+        const daily = monthly / 30;
+        
+        // 更新显示
+        laptopDailyRent.textContent = '¥' + daily.toFixed(2);
+        laptopMonthlyRent.textContent = '¥' + monthly.toFixed(2);
+        
+        // 更新隐藏字段
+        totalPriceInput.value = price.toFixed(2);
+        dailyRentInput.value = daily.toFixed(2);
+        monthlyRentInput.value = monthly.toFixed(2);
+        
+        // 更新采购价格输入框
+        const purchasePriceInput = document.getElementById('purchase_price');
+        if (purchasePriceInput && price > 0) {
+            purchasePriceInput.value = price.toFixed(2);
+        }
+        
+        // 更新日租金和月租金输入框
+        const dailyRentInputField = document.getElementById('rental_price_per_day');
+        const monthlyRentInputField = document.getElementById('rental_price_per_month');
+        if (dailyRentInputField && daily > 0) {
+            dailyRentInputField.value = daily.toFixed(2);
+        }
+        if (monthlyRentInputField && monthly > 0) {
+            monthlyRentInputField.value = monthly.toFixed(2);
+        }
+    }
+    
+    // 为每个配件选择添加事件监听
+    document.querySelectorAll('.cpu-select, .cooler-select, .motherboard-select, .memory-select, .storage-select, .graphics-select, .case-select, .power-select, .monitor-select').forEach(select => {
+        select.addEventListener('change', function () {
+            calculateComputerTotal();
+            const selectedOption = categorySelect.options[categorySelect.selectedIndex];
+            const categoryName = selectedOption.text.trim();
+            if (categoryName.includes('电脑主机') || categoryName.includes('台式电脑')) {
+                updateComputerSpecifications();
+            }
+        });
+    });
+    
+    // 确保页面加载时如果有已选择的CPU，也会计算价格
+    const cpuSelect = document.querySelector('.cpu-select');
+    if (cpuSelect && cpuSelect.value) {
+        calculateComputerTotal();
+    }
+    
+    // 为测试按钮添加事件监听器
+    const testButton = document.getElementById('testCalculateButton');
+    if (testButton) {
+        testButton.addEventListener('click', function() {
+            console.log('测试计算总价函数');
+            console.log('CPU选择元素:', cpuSelect);
+            if (cpuSelect) {
+                console.log('CPU选择值:', cpuSelect.value);
+                console.log('CPU选择选项:', cpuSelect.selectedIndex);
+                if (cpuSelect.value) {
+                    console.log('CPU选择的价格属性:', cpuSelect.options[cpuSelect.selectedIndex].dataset.price);
+                }
+            }
+            calculateComputerTotal();
+            console.log('执行完成');
+        });
+    }
+    
+    // 监听打印机价格变化
+    printerPurchasePrice.addEventListener('input', calculatePrinterRent);
+    
+    // 监听笔记本电脑价格变化
+    if (laptopPurchasePrice) {
+        laptopPurchasePrice.addEventListener('input', calculateLaptopRent);
+    }
+
+    // 监听打印机品牌/型号变化，实时更新产品型号
+    if (printerBrandInput) {
+        printerBrandInput.addEventListener('input', function () {
+            const selectedOption = categorySelect.options[categorySelect.selectedIndex];
+            const categoryName = selectedOption.text.trim();
+            if (categoryName.includes('打印机')) {
+                updatePrinterSpecifications();
+            }
+        });
+    }
+
+    if (printerModelInput) {
+        printerModelInput.addEventListener('input', function () {
+            const selectedOption = categorySelect.options[categorySelect.selectedIndex];
+            const categoryName = selectedOption.text.trim();
+            if (categoryName.includes('打印机')) {
+                updatePrinterSpecifications();
+            }
+        });
+    }
+    
+    // 监听笔记本电脑品牌/型号变化，实时更新产品型号
+    if (laptopBrandInput) {
+        // 使用最简单的方式
+        laptopBrandInput.addEventListener('input', function () {
+            console.log('品牌输入:', this.value);
+            if (categorySelect.options[categorySelect.selectedIndex].text.includes('笔记本电脑')) {
+                const brand = this.value.trim();
+                const model = laptopModelInput.value.trim();
+                console.log('准备更新:', { brand, model });
+                if (brand && model) {
+                    specificationsInput.value = brand + ' ' + model;
+                    console.log('产品型号已设置为:', specificationsInput.value);
+                } else if (model) {
+                    specificationsInput.value = model;
+                    console.log('产品型号设置为仅型号:', specificationsInput.value);
+                }
+            }
+        });
+    }
+
+    if (laptopModelInput) {
+        laptopModelInput.addEventListener('input', function () {
+            console.log('型号输入:', this.value);
+            if (categorySelect.options[categorySelect.selectedIndex].text.includes('笔记本电脑')) {
+                const brand = laptopBrandInput.value.trim();
+                const model = this.value.trim();
+                console.log('准备更新:', { brand, model });
+                if (brand && model) {
+                    specificationsInput.value = brand + ' ' + model;
+                    console.log('产品型号已设置为:', specificationsInput.value);
+                } else if (model) {
+                    specificationsInput.value = model;
+                    console.log('产品型号设置为仅型号:', specificationsInput.value);
+                }
+            }
+        });
+    }
+
+    // 提交前校验：打印机和笔记本电脑必须填写采购价格，电脑主机不校验该字段
+    const productForm = document.getElementById('productForm');
+    if (productForm) {
+        productForm.addEventListener('submit', function (e) {
+            const selectedOption = categorySelect.options[categorySelect.selectedIndex];
+            const categoryName = selectedOption.text.trim();
+
+            if (categoryName.includes('打印机')) { // 打印机
+                const priceValue = parseFloat(printerPurchasePrice.value);
+                if (isNaN(priceValue) || priceValue <= 0) {
+                    e.preventDefault();
+                    alert('请填写打印机的采购价格');
+                    printerPurchasePrice.focus();
+                    return;
+                }
+            } else if (categoryName.includes('笔记本电脑')) { // 笔记本电脑
+                const brandValue = laptopBrandInput ? laptopBrandInput.value.trim() : '';
+                const modelValue = laptopModelInput ? laptopModelInput.value.trim() : '';
+                const priceValue = parseFloat(laptopPurchasePrice.value);
+                
+                if (!brandValue) {
+                    e.preventDefault();
+                    alert('请填写笔记本电脑的品牌');
+                    if (laptopBrandInput) laptopBrandInput.focus();
+                    return;
+                }
+                
+                if (!modelValue) {
+                    e.preventDefault();
+                    alert('请填写笔记本电脑的型号');
+                    if (laptopModelInput) laptopModelInput.focus();
+                    return;
+                }
+                
+                if (isNaN(priceValue) || priceValue <= 0) {
+                    e.preventDefault();
+                    alert('请填写笔记本电脑的采购价格');
+                    if (laptopPurchasePrice) laptopPurchasePrice.focus();
+                    return;
+                }
+            }
+        });
+    }
+
+    // 处理添加类别功能
+    const saveCategoryBtn = document.getElementById('saveCategoryBtn');
+    const addCategoryModal = document.getElementById('addCategoryModal');
+    const addCategoryForm = document.getElementById('addCategoryForm');
+    
+    if (saveCategoryBtn && addCategoryForm) {
+        saveCategoryBtn.addEventListener('click', function() {
+            const categoryName = document.getElementById('newCategoryName').value.trim();
+            const categoryDescription = document.getElementById('newCategoryDescription').value.trim();
+            
+            if (!categoryName) {
+                alert('请输入类别名称');
+                return;
+            }
+            
+            // 发送AJAX请求添加类别
+            fetch('/categories/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `name=${encodeURIComponent(categoryName)}&description=${encodeURIComponent(categoryDescription)}`
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('网络响应不正常');
+                }
+                return response.text();
+            })
+            .then(data => {
+                // 关闭模态框
+                const modal = bootstrap.Modal.getInstance(addCategoryModal);
+                modal.hide();
+                
+                // 清空表单
+                addCategoryForm.reset();
+                
+                // 刷新类别下拉框
+                fetch('/api/categories')
+                .then(response => response.json())
+                .then(categories => {
+                    const categorySelect = document.getElementById('category_id');
+                    categorySelect.innerHTML = '<option value="">请选择类别</option>';
+                    
+                    categories.forEach(category => {
+                        const option = document.createElement('option');
+                        option.value = category.id;
+                        option.textContent = category.name;
+                        categorySelect.appendChild(option);
+                    });
+                    
+                    // 选中新添加的类别
+                    const newOption = Array.from(categorySelect.options).find(option => 
+                        option.textContent === categoryName
+                    );
+                    if (newOption) {
+                        categorySelect.value = newOption.value;
+                        // 触发change事件以更新相应的配置区域
+                        categorySelect.dispatchEvent(new Event('change'));
+                    }
+                })
+                .catch(error => {
+                    console.error('刷新类别列表失败:', error);
+                    // 如果刷新失败，页面刷新
+                    window.location.reload();
+                });
+                
+                alert('类别添加成功');
+            })
+            .catch(error => {
+                console.error('添加类别失败:', error);
+                alert('添加类别失败，请重试');
+            });
+        });
+    }
+};
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

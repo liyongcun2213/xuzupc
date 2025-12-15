@@ -1,0 +1,523 @@
+<%- include('../layout') %>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>添加产品型号</div>
+        <div>
+            <a href="/products" class="btn btn-secondary">返回列表</a>
+        </div>
+    </div>
+    <div class="card-body">
+        <form action="/products/add" method="post" id="productForm">
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label for="product_code" class="form-label">产品编号 <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="product_code" name="product_code" required readonly>
+                    <small class="text-muted">系统自动生成唯一编号</small>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label for="name" class="form-label">产品名称 <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="name" name="name" required>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label for="model_number" class="form-label">产品型号</label>
+                    <input type="text" class="form-control" id="model_number" name="model_number" readonly>
+                    <small class="text-muted">由配件型号自动组成</small>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label for="category_id" class="form-label">产品类别 <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <select class="form-select" id="category_id" name="category_id" required>
+                            <option value="">请选择类别</option>
+                            <% categories.forEach(category => { %>
+                            <option value="<%= category.id %>"><%= category.name %></option>
+                            <% }) %>
+                        </select>
+                        <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+                            <i class="fas fa-plus"></i> 添加
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 台式电脑配置部分 -->
+            <div id="desktopConfig" style="display:none;">
+                <hr>
+                <h5>台式电脑配置</h5>
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label for="cpu" class="form-label">CPU</label>
+                        <select class="form-select accessory-select" data-type="CPU" name="accessories[CPU]">
+                            <option value="">请选择CPU</option>
+                            <% cpuList.forEach(item => { %>
+                            <option value="<%= item.id %>" data-price="<%= (item.latest_price || item.unit_price || item.purchase_price || 0) %>" data-model="<%= item.model || item.name %>"><%= item.brand ? (item.brand + ' ' + (item.model || item.name)) : (item.model || item.name) %> (¥<%= (item.latest_price || item.unit_price || item.purchase_price || 0) %>)</option>
+                            <% }) %>
+                        </select>
+                        <small class="text-muted">价格: <span class="accessory-price">¥0.00</span></small>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="cooler" class="form-label">散热器</label>
+                        <select class="form-select accessory-select" data-type="散热器" name="accessories[散热器]">
+                            <option value="">请选择散热器</option>
+                            <% coolerList.forEach(item => { %>
+                            <option value="<%= item.id %>" data-price="<%= (item.latest_price || item.unit_price || item.purchase_price || 0) %>" data-model="<%= item.model || item.name %>"><%= item.brand ? (item.brand + ' ' + (item.model || item.name)) : (item.model || item.name) %> (¥<%= (item.latest_price || item.unit_price || item.purchase_price || 0) %>)</option>
+                            <% }) %>
+                        </select>
+                        <small class="text-muted">价格: <span class="accessory-price">¥0.00</span></small>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="motherboard" class="form-label">主板</label>
+                        <select class="form-select accessory-select" data-type="主板" name="accessories[主板]">
+                            <option value="">请选择主板</option>
+                            <% motherboardList.forEach(item => { %>
+                            <option value="<%= item.id %>" data-price="<%= (item.latest_price || item.unit_price || item.purchase_price || 0) %>" data-model="<%= item.model || item.name %>"><%= item.brand ? (item.brand + ' ' + (item.model || item.name)) : (item.model || item.name) %> (¥<%= (item.latest_price || item.unit_price || item.purchase_price || 0) %>)</option>
+                            <% }) %>
+                        </select>
+                        <small class="text-muted">价格: <span class="accessory-price">¥0.00</span></small>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="memory" class="form-label">内存</label>
+                        <select class="form-select accessory-select" data-type="内存" name="accessories[内存]">
+                            <option value="">请选择内存</option>
+                            <% memoryList.forEach(item => { %>
+                            <option value="<%= item.id %>" data-price="<%= (item.latest_price || item.unit_price || item.purchase_price || 0) %>" data-model="<%= item.model || item.name %>"><%= item.brand ? (item.brand + ' ' + (item.model || item.name)) : (item.model || item.name) %> (¥<%= (item.latest_price || item.unit_price || item.purchase_price || 0) %>)</option>
+                            <% }) %>
+                        </select>
+                        <small class="text-muted">价格: <span class="accessory-price">¥0.00</span></small>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label for="storage" class="form-label">硬盘</label>
+                        <select class="form-select accessory-select" data-type="硬盘" name="accessories[硬盘]">
+                            <option value="">请选择硬盘</option>
+                            <% storageList.forEach(item => { %>
+                            <option value="<%= item.id %>" data-price="<%= (item.latest_price || item.unit_price || item.purchase_price || 0) %>" data-model="<%= item.model || item.name %>"><%= item.brand ? (item.brand + ' ' + (item.model || item.name)) : (item.model || item.name) %> (¥<%= (item.latest_price || item.unit_price || item.purchase_price || 0) %>)</option>
+                            <% }) %>
+                        </select>
+                        <small class="text-muted">价格: <span class="accessory-price">¥0.00</span></small>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="graphics" class="form-label">显卡</label>
+                        <select class="form-select accessory-select" data-type="显卡" name="accessories[显卡]">
+                            <option value="">请选择显卡</option>
+                            <% graphicsList.forEach(item => { %>
+                            <option value="<%= item.id %>" data-price="<%= (item.latest_price || item.unit_price || item.purchase_price || 0) %>" data-model="<%= item.model || item.name %>"><%= item.brand ? (item.brand + ' ' + (item.model || item.name)) : (item.model || item.name) %> (¥<%= (item.latest_price || item.unit_price || item.purchase_price || 0) %>)</option>
+                            <% }) %>
+                        </select>
+                        <small class="text-muted">价格: <span class="accessory-price">¥0.00</span></small>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="case" class="form-label">机箱</label>
+                        <select class="form-select accessory-select" data-type="机箱" name="accessories[机箱]">
+                            <option value="">请选择机箱</option>
+                            <% caseList.forEach(item => { %>
+                            <option value="<%= item.id %>" data-price="<%= (item.latest_price || item.unit_price || item.purchase_price || 0) %>" data-model="<%= item.model || item.name %>"><%= item.brand ? (item.brand + ' ' + (item.model || item.name)) : (item.model || item.name) %> (¥<%= (item.latest_price || item.unit_price || item.purchase_price || 0) %>)</option>
+                            <% }) %>
+                        </select>
+                        <small class="text-muted">价格: <span class="accessory-price">¥0.00</span></small>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="power" class="form-label">电源</label>
+                        <select class="form-select accessory-select" data-type="电源" name="accessories[电源]">
+                            <option value="">请选择电源</option>
+                            <% powerList.forEach(item => { %>
+                            <option value="<%= item.id %>" data-price="<%= (item.latest_price || item.unit_price || item.purchase_price || 0) %>" data-model="<%= item.model || item.name %>"><%= item.brand ? (item.brand + ' ' + (item.model || item.name)) : (item.model || item.name) %> (¥<%= (item.latest_price || item.unit_price || item.purchase_price || 0) %>)</option>
+                            <% }) %>
+                        </select>
+                        <small class="text-muted">价格: <span class="accessory-price">¥0.00</span></small>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label for="monitor" class="form-label">显示器</label>
+                        <select class="form-select accessory-select" data-type="显示器" name="accessories[显示器]">
+                            <option value="">请选择显示器</option>
+                            <% monitorList.forEach(item => { %>
+                            <option value="<%= item.id %>" data-price="<%= (item.latest_price || item.unit_price || item.purchase_price || 0) %>" data-model="<%= item.model || item.name %>"><%= item.brand ? (item.brand + ' ' + (item.model || item.name)) : (item.model || item.name) %> (¥<%= (item.latest_price || item.unit_price || item.purchase_price || 0) %>)</option>
+                            <% }) %>
+                        </select>
+                        <small class="text-muted">价格: <span class="accessory-price">¥0.00</span></small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 笔记本电脑配置部分 -->
+            <div id="laptopConfig" style="display:none;">
+                <hr>
+                <h5>笔记本电脑配置</h5>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="brand" class="form-label">品牌 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="brand" name="brand">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="model" class="form-label">型号 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="model" name="model">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="laptopPrice" class="form-label">价格 <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" min="0" class="form-control" id="laptopPrice" name="purchase_price">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label for="specifications" class="form-label">规格</label>
+                        <textarea class="form-control" id="specifications" name="specifications" rows="3"></textarea>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 价格计算区域 -->
+            <div class="row mt-3">
+                <div class="col-md-4 mb-3">
+                    <label for="total_price" class="form-label">总采购价格</label>
+                    <input type="number" step="0.01" min="0" class="form-control" id="total_price" name="total_price" readonly>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="daily_rent" class="form-label">建议日租金</label>
+                    <input type="number" step="0.01" min="0" class="form-control" id="daily_rent" name="calculated_daily_rent" readonly>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="monthly_rent" class="form-label">建议月租金</label>
+                    <input type="number" step="0.01" min="0" class="form-control" id="monthly_rent" name="calculated_monthly_rent" readonly>
+                </div>
+            </div>
+            
+            <div class="d-flex justify-content-end">
+                <a href="/products" class="btn btn-secondary me-2">取消</a>
+                <button type="submit" class="btn btn-primary">保存产品型号</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// 使用window.onload确保页面完全加载后执行
+window.onload = function() {
+    const categorySelect = document.getElementById('category_id');
+    const desktopConfig = document.getElementById('desktopConfig');
+    const laptopConfig = document.getElementById('laptopConfig');
+    const totalPriceInput = document.getElementById('total_price');
+    const dailyRentInput = document.getElementById('daily_rent');
+    const monthlyRentInput = document.getElementById('monthly_rent');
+    const laptopPriceInput = document.getElementById('laptopPrice');
+    const productCodeInput = document.getElementById('product_code');
+    const modelNumberInput = document.getElementById('model_number');
+    
+    // 生成产品编号
+    generateProductCode();
+    
+    // 监听类别变化
+    categorySelect.addEventListener('change', function() {
+        const categoryId = this.value;
+        const selectedOption = this.options[this.selectedIndex];
+        const categoryName = selectedOption.text.trim();
+        
+        console.log('类别变化:', categoryName);
+        
+        // 隐藏所有配置区域
+        desktopConfig.style.display = 'none';
+        laptopConfig.style.display = 'none';
+        
+        // 重置价格
+        resetPriceFields();
+        
+        // 根据类别名称显示相应配置
+        if (categoryName.includes('台式电脑')) {
+            console.log('显示台式电脑配置');
+            desktopConfig.style.display = 'block';
+        } else if (categoryName.includes('笔记本电脑')) {
+            console.log('显示笔记本电脑配置');
+            laptopConfig.style.display = 'block';
+        }
+    });
+    
+    // 重置价格字段
+    function resetPriceFields() {
+        totalPriceInput.value = '';
+        dailyRentInput.value = '';
+        monthlyRentInput.value = '';
+    }
+    
+    // 生成产品编号
+    function generateProductCode() {
+        fetch('/api/get-next-product-code')
+            .then(response => response.json())
+            .then(data => {
+                productCodeInput.value = data.productCode;
+            })
+            .catch(error => {
+                console.error('获取产品编号失败:', error);
+                // 生成默认编号
+                const defaultCode = 'PC' + String(Math.floor(Math.random() * 9999) + 1).padStart(4, '0');
+                productCodeInput.value = defaultCode;
+            });
+    }
+    
+    // 更新产品型号
+    function updateModelNumber() {
+        const modelParts = [];
+        
+        // 获取CPU型号
+        const cpuSelect = document.querySelector('[data-type="CPU"]');
+        if (cpuSelect && cpuSelect.value) {
+            const cpuModel = cpuSelect.options[cpuSelect.selectedIndex].dataset.model;
+            if (cpuModel) modelParts.push(cpuModel);
+        }
+        
+        // 获取内存型号
+        const memorySelect = document.querySelector('[data-type="内存"]');
+        if (memorySelect && memorySelect.value) {
+            const memoryModel = memorySelect.options[memorySelect.selectedIndex].dataset.model;
+            if (memoryModel) modelParts.push(memoryModel);
+        }
+        
+        // 获取硬盘型号
+        const storageSelect = document.querySelector('[data-type="硬盘"]');
+        if (storageSelect && storageSelect.value) {
+            const storageModel = storageSelect.options[storageSelect.selectedIndex].dataset.model;
+            if (storageModel) modelParts.push(storageModel);
+        }
+        
+        // 获取显卡型号
+        const graphicsSelect = document.querySelector('[data-type="显卡"]');
+        if (graphicsSelect && graphicsSelect.value) {
+            const graphicsModel = graphicsSelect.options[graphicsSelect.selectedIndex].dataset.model;
+            if (graphicsModel) modelParts.push(graphicsModel);
+        }
+        
+        // 获取显示器型号
+        const monitorSelect = document.querySelector('[data-type="显示器"]');
+        if (monitorSelect && monitorSelect.value) {
+            const monitorModel = monitorSelect.options[monitorSelect.selectedIndex].dataset.model;
+            if (monitorModel) modelParts.push(monitorModel);
+        }
+        
+        // 更新产品型号框
+        modelNumberInput.value = modelParts.join('/');
+    }
+    
+    // 计算台式电脑总价和租金
+    function calculateDesktopTotal() {
+        let total = 0;
+        
+        document.querySelectorAll('.accessory-select').forEach(select => {
+            if (select.value) {
+                const price = parseFloat(select.options[select.selectedIndex].dataset.price) || 0;
+                total += price;
+                
+                // 更新单个配件价格显示
+                const priceDisplay = select.parentElement.querySelector('.accessory-price');
+                if (priceDisplay) {
+                    priceDisplay.textContent = '¥' + price.toFixed(2);
+                }
+            } else {
+                // 重置单个配件价格显示
+                const priceDisplay = select.parentElement.querySelector('.accessory-price');
+                if (priceDisplay) {
+                    priceDisplay.textContent = '¥0.00';
+                }
+            }
+        });
+        
+        // 计算租金 (月租金 = 总价/15, 日租金 = 月租金/30)
+        const monthly = total / 15;
+        const daily = monthly / 30;
+        
+        // 更新价格字段
+        totalPriceInput.value = total.toFixed(2);
+        dailyRentInput.value = daily.toFixed(2);
+        monthlyRentInput.value = monthly.toFixed(2);
+        
+        // 更新产品型号
+        updateModelNumber();
+    }
+    
+    // 计算笔记本电脑租金
+    function calculateLaptopRent() {
+        const price = parseFloat(laptopPriceInput.value) || 0;
+        
+        // 计算租金 (月租金 = 总价/15, 日租金 = 月租金/30)
+        const monthly = price / 15;
+        const daily = monthly / 30;
+        
+        // 更新价格字段
+        totalPriceInput.value = price.toFixed(2);
+        dailyRentInput.value = daily.toFixed(2);
+        monthlyRentInput.value = monthly.toFixed(2);
+    }
+    
+    // 为配件选择添加事件监听
+    document.querySelectorAll('.accessory-select').forEach(select => {
+        select.addEventListener('change', calculateDesktopTotal);
+    });
+    
+    // 为笔记本价格输入添加事件监听
+    laptopPriceInput.addEventListener('input', calculateLaptopRent);
+    
+    // 表单提交验证
+    document.getElementById('productForm').addEventListener('submit', function(e) {
+        const categoryId = categorySelect.value;
+        const selectedOption = categorySelect.options[categorySelect.selectedIndex];
+        const categoryName = selectedOption.text.trim();
+        
+        if (!categoryId) {
+            e.preventDefault();
+            alert('请选择产品类别');
+            categorySelect.focus();
+            return;
+        }
+        
+        if (categoryName.includes('台式电脑')) {
+            // 验证台式电脑配置
+            let hasAccessory = false;
+            document.querySelectorAll('.accessory-select').forEach(select => {
+                if (select.value) {
+                    hasAccessory = true;
+                }
+            });
+            
+            if (!hasAccessory) {
+                e.preventDefault();
+                alert('请至少选择一个配件');
+                return;
+            }
+        } else if (categoryName.includes('笔记本电脑')) {
+            // 验证笔记本配置
+            const brand = document.getElementById('brand').value.trim();
+            const model = document.getElementById('model').value.trim();
+            const laptopPrice = laptopPriceInput.value;
+            
+            if (!brand) {
+                e.preventDefault();
+                alert('请填写笔记本电脑品牌');
+                document.getElementById('brand').focus();
+                return;
+            }
+            
+            if (!model) {
+                e.preventDefault();
+                alert('请填写笔记本电脑型号');
+                document.getElementById('model').focus();
+                return;
+            }
+            
+            if (!laptopPrice || laptopPrice <= 0) {
+                e.preventDefault();
+                alert('请填写有效的价格');
+                laptopPriceInput.focus();
+                return;
+            }
+        }
+    });
+    
+    // 处理添加类别功能
+    const saveCategoryBtn = document.getElementById('saveCategoryBtn');
+    const addCategoryModal = document.getElementById('addCategoryModal');
+    const addCategoryForm = document.getElementById('addCategoryForm');
+    
+    if (saveCategoryBtn && addCategoryForm) {
+        saveCategoryBtn.addEventListener('click', function() {
+            const categoryName = document.getElementById('newCategoryName').value.trim();
+            const categoryDescription = document.getElementById('newCategoryDescription').value.trim();
+            
+            if (!categoryName) {
+                alert('请输入类别名称');
+                return;
+            }
+            
+            // 发送AJAX请求添加类别
+            fetch('/categories/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `name=${encodeURIComponent(categoryName)}&description=${encodeURIComponent(categoryDescription)}`
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('网络响应不正常');
+                }
+                return response.text();
+            })
+            .then(data => {
+                // 关闭模态框
+                const modal = bootstrap.Modal.getInstance(addCategoryModal);
+                modal.hide();
+                
+                // 清空表单
+                addCategoryForm.reset();
+                
+                // 刷新类别下拉框
+                fetch('/api/categories')
+                .then(response => response.json())
+                .then(categories => {
+                    const categorySelect = document.getElementById('category_id');
+                    categorySelect.innerHTML = '<option value="">请选择类别</option>';
+                    
+                    categories.forEach(category => {
+                        const option = document.createElement('option');
+                        option.value = category.id;
+                        option.textContent = category.name;
+                        categorySelect.appendChild(option);
+                    });
+                    
+                    // 选中新添加的类别
+                    const newOption = Array.from(categorySelect.options).find(option => 
+                        option.textContent === categoryName
+                    );
+                    if (newOption) {
+                        categorySelect.value = newOption.value;
+                        // 触发change事件以更新相应的配置区域
+                        categorySelect.dispatchEvent(new Event('change'));
+                    }
+                })
+                .catch(error => {
+                    console.error('刷新类别列表失败:', error);
+                    // 如果刷新失败，页面刷新
+                    window.location.reload();
+                });
+                
+                alert('类别添加成功');
+            })
+            .catch(error => {
+                console.error('添加类别失败:', error);
+                alert('添加类别失败，请重试');
+            });
+        });
+    }
+};
+</script>
+
+<!-- 添加类别模态框 -->
+<div class="modal fade" id="addCategoryModal" tabindex="-1" aria-labelledby="addCategoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addCategoryModalLabel">添加产品类别</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addCategoryForm">
+                    <div class="mb-3">
+                        <label for="newCategoryName" class="form-label">类别名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="newCategoryName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="newCategoryDescription" class="form-label">描述</label>
+                        <textarea class="form-control" id="newCategoryDescription" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="saveCategoryBtn">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,255 @@
+---
+description: 
+alwaysApply: true
+enabled: true
+updatedAt: 2025-12-09T03:56:27.106Z
+provider: 
+---
+
+# Autocomplete 联想搜索实现规范
+
+## 概述
+本系统所有新建或修改的搜索输入框必须使用 autocomplete（联想搜索）功能，以提升用户体验。
+
+## 后端 API 规范
+
+### API 接口位置
+所有 autocomplete API 统一放在 `server.js` 文件中，路径格式为：`/api/autocomplete/{type}`
+
+### 已实现的 API 端点
+
+1. **设备搜索** - `/api/autocomplete/devices`
+   - 搜索字段：device_code, device_name, serial_number
+   - 返回格式：`{ value: "设备编号", label: "设备编号 - 设备名称" }`
+
+2. **配件搜索** - `/api/autocomplete/accessories`
+   - 搜索字段：name, brand, model
+   - 返回格式：`{ value: "配件名", label: "配件名 - 品牌 型号" }`
+
+3. **批次号搜索** - `/api/autocomplete/batches`
+   - 搜索字段：batch_no
+   - 返回格式：`{ value: "批次号", label: "批次号 - 供应商" }`
+
+4. **供应商搜索** - `/api/autocomplete/suppliers`
+   - 搜索字段：name, contact_person
+   - 返回格式：`{ id: ID, value: "供应商名", label: "供应商名" }`
+
+5. **订单号搜索** - `/api/autocomplete/orders`
+   - 搜索字段：order_number
+   - 返回格式：`{ value: "订单号", label: "订单号 - 客户名" }`
+
+6. **客户搜索** - `/api/autocomplete/customers`
+   - 搜索字段：customer_code, name, contact_person
+   - 返回格式：`{ id: ID, customer_code: "编号", value: "客户名", label: "编号 - 客户名" }`
+
+### API 响应格式
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "value": "用于填充输入框的值",
+      "label": "显示给用户的文本",
+      "id": "可选，记录ID",
+      "...": "其他可选字段"
+    }
+  ]
+}
+```
+
+### 查询参数
+- `q`: 搜索关键字（必需）
+- `limit`: 返回结果数量限制（可选，默认 10）
+
+## 前端实现规范
+
+### HTML 结构
+```html
+<div class="col-md-4">
+    <div class="input-group position-relative">
+        <input type="text" 
+               class="form-control" 
+               id="searchInput" 
+               placeholder="搜索提示..." 
+               autocomplete="off">
+        <button class="btn btn-outline-secondary" type="button" id="searchBtn">
+            <i class="bi bi-search"></i>
+        </button>
+        <div id="autocompleteResults" 
+             class="list-group position-absolute w-100" 
+             style="top: 100%; left: 0; z-index: 1050; max-height: 300px; overflow-y: auto; display: none;">
+        </div>
+    </div>
+</div>
+```
+
+### JavaScript 实现模板
+
+```javascript
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const autocompleteResults = document.getElementById('autocompleteResults');
+    let debounceTimer;
+
+    // Autocomplete 功能
+    searchInput.addEventListener('input', function() {
+        const keyword = this.value.trim();
+        
+        clearTimeout(debounceTimer);
+        
+        if (keyword.length < 1) {
+            autocompleteResults.style.display = 'none';
+            return;
+        }
+        
+        debounceTimer = setTimeout(() => {
+            fetch(`/api/autocomplete/{type}?q=${encodeURIComponent(keyword)}&limit=10`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.data.length > 0) {
+                        renderAutocomplete(data.data);
+                    } else {
+                        autocompleteResults.style.display = 'none';
+                    }
+                })
+                .catch(err => {
+                    console.error('Autocomplete error:', err);
+                    autocompleteResults.style.display = 'none';
+                });
+        }, 300); // 300ms 防抖
+    });
+
+    function renderAutocomplete(results) {
+        autocompleteResults.innerHTML = results.map(item => 
+            `<button type="button" class="list-group-item list-group-item-action py-2" data-value="${item.value}">
+                ${item.label}
+            </button>`
+        ).join('');
+        
+        autocompleteResults.style.display = 'block';
+        
+        // 点击选项
+        autocompleteResults.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', function() {
+                searchInput.value = this.dataset.value;
+                autocompleteResults.style.display = 'none';
+                // 触发搜索或其他操作
+                performSearch();
+            });
+        });
+    }
+
+    // 点击外部关闭 autocomplete
+    document.addEventListener('click', function(e) {
+        if (!searchInput.contains(e.target) && !autocompleteResults.contains(e.target)) {
+            autocompleteResults.style.display = 'none';
+        }
+    });
+
+    // 回车键处理
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            autocompleteResults.style.display = 'none';
+            performSearch();
+        }
+    });
+});
+```
+
+### 多类型搜索支持
+
+当需要同时搜索多个类型时（如订单号和客户名称），使用以下模式：
+
+```javascript
+Promise.all([
+    fetch(`/api/autocomplete/orders?q=${encodeURIComponent(keyword)}&limit=5`).then(r => r.json()),
+    fetch(`/api/autocomplete/customers?q=${encodeURIComponent(keyword)}&limit=5`).then(r => r.json())
+])
+.then(([orderData, customerData]) => {
+    const results = [];
+    
+    if (orderData.success && orderData.data.length > 0) {
+        results.push({ type: 'header', label: '订单号' });
+        results.push(...orderData.data.map(item => ({ ...item, type: 'order' })));
+    }
+    
+    if (customerData.success && customerData.data.length > 0) {
+        results.push({ type: 'header', label: '客户' });
+        results.push(...customerData.data.map(item => ({ ...item, type: 'customer' })));
+    }
+    
+    if (results.length > 0) {
+        renderAutocomplete(results);
+    } else {
+        autocompleteResults.style.display = 'none';
+    }
+});
+```
+
+渲染时添加分组标题：
+
+```javascript
+function renderAutocomplete(results) {
+    autocompleteResults.innerHTML = results.map(item => {
+        if (item.type === 'header') {
+            return `<div class="list-group-item bg-light fw-bold py-1 px-2" style="font-size: 0.85rem;">${item.label}</div>`;
+        }
+        return `<button type="button" class="list-group-item list-group-item-action py-2" data-value="${item.value}">
+            ${item.label}
+        </button>`;
+    }).join('');
+    
+    autocompleteResults.style.display = 'block';
+    // ... 其余逻辑
+}
+```
+
+## 已应用页面清单
+
+1. ✅ 设备管理页面（`devices/index.ejs`）- 搜索设备编号
+2. ✅ 配件管理页面（`accessories/index.ejs`）- 搜索配件名称
+3. ✅ 配件库存统计页面（`accessories/stats.ejs`）- 搜索配件名称
+4. ✅ 采购管理页面（`purchases/index.ejs`）- 搜索批次号和供应商
+5. ✅ 采购记录页面（`purchases/records.ejs`）- 搜索配件名称
+6. ✅ 租赁管理页面（`rental-orders/index.ejs`）- 搜索订单号和客户
+7. ✅ 退租处理页面（`returns/add.ejs`）- 搜索客户
+8. ✅ 客户消费管理页面（`customer-billing.ejs`）- 搜索客户编号或名称
+
+## 新建搜索框规范
+
+当需要创建新的搜索框时：
+
+1. **确定搜索数据类型**
+   - 检查是否已有对应的 API 端点
+   - 如无，需在 `server.js` 中按照规范创建新端点
+
+2. **HTML 结构**
+   - 必须使用 `position-relative` 容器
+   - 输入框添加 `autocomplete="off"` 属性
+   - 结果容器使用绝对定位并设置合适的 `z-index`
+
+3. **JavaScript 实现**
+   - 使用 300ms 防抖（debounce）
+   - 最少 1 个字符触发搜索
+   - 支持键盘回车和鼠标点击
+   - 点击外部自动关闭下拉列表
+
+4. **样式规范**
+   - 使用 Bootstrap 的 `list-group` 组件
+   - 最大高度 300px，超出滚动
+   - 按钮样式使用 `list-group-item-action`
+
+## 性能优化建议
+
+1. 使用防抖（debounce）减少 API 调用
+2. 限制返回结果数量（建议 10-15 条）
+3. 在输入字符较少时（< 1 字符）不触发搜索
+4. 使用 SQL `LIMIT` 子句限制数据库查询结果
+
+## 注意事项
+
+- 所有 autocomplete 输入框必须添加 `autocomplete="off"` 防止浏览器原生自动完成
+- 确保容器有 `position-relative` 以正确定位下拉列表
+- 使用 `z-index: 1050` 确保下拉列表在最上层
+- 必须处理点击外部关闭下拉列表的逻辑
+- API 端点必须添加 `isAuthenticated` 中间件保护

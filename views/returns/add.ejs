@@ -1,0 +1,419 @@
+<%- include('../layout') %>
+
+<div class="container-fluid mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4>退租处理</h4>
+        <a href="/returns" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> 返回退租列表
+        </a>
+    </div>
+
+    <form id="returnForm" action="/returns/add" method="post">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-3">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">退租信息</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="customerFilter" class="form-label">客户 <span class="text-danger">*</span></label>
+                            <div class="input-group position-relative">
+                                <input type="text" class="form-control" id="customerSearchInput" placeholder="搜索客户编号或名称..." autocomplete="off" required>
+                                <button class="btn btn-outline-secondary" type="button" id="customerSearchBtn">
+                                    <i class="bi bi-search"></i>
+                                </button>
+                                <input type="hidden" id="customerFilter" name="customerId">
+                                <div id="customerAutocomplete" class="list-group position-absolute w-100" style="top: 100%; left: 0; z-index: 1050; max-height: 300px; overflow-y: auto; display: none;"></div>
+                            </div>
+                        </div>
+
+                        <input type="hidden" id="rentalOrderId" name="rentalOrderId">
+
+                        <div class="mb-3 d-none">
+                            <div class="border rounded p-2 bg-light">
+                                <div>订单号：<span id="infoOrderNumber" class="fw-bold">-</span></div>
+                                <div>客户名称：<span id="infoCustomerName">-</span></div>
+                                <div>押金：<span id="infoDeposit">0.00</span> 元</div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="returnDate" class="form-label">退租日期 <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="returnDate" name="returnDate" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="conditionStatus" class="form-label">设备状况 <span class="text-danger">*</span></label>
+                            <select class="form-select" id="conditionStatus" name="conditionStatus" required>
+                                <option value="excellent">优秀</option>
+                                <option value="good">良好</option>
+                                <option value="fair">一般</option>
+                                <option value="poor">较差</option>
+                                <option value="damaged">损坏</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="damageDescription" class="form-label">损坏情况说明</label>
+                            <textarea class="form-control" id="damageDescription" name="damageDescription" rows="3" placeholder="如有损坏，请详细描述具体情况..."></textarea>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="repairCost" class="form-label">维修费用</label>
+                                    <input type="number" step="0.01" min="0" class="form-control" id="repairCost" name="repairCost" value="0.00">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="penaltyFee" class="form-label">罚金</label>
+                                    <input type="number" step="0.01" min="0" class="form-control" id="penaltyFee" name="penaltyFee" value="0.00">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">系统计算</label>
+                            <div class="border rounded p-2 bg-light">
+                                <div>总扣款：<span id="infoTotalDeduction">0.00</span> 元</div>
+                                <div>预计退款：<span id="infoRefundAmount">0.00</span> 元</div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">备注</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3" placeholder="可填写退租备注信息..."></textarea>
+                        </div>
+
+                        <div class="mb-3 text-muted">
+                            <label class="form-label">说明</label>
+                            <ul class="mb-0 small">
+                                <li>先选择客户，然后从列表中勾选该客户在租中的设备。</li>
+                                <li>一次退租处理仅支持同一订单下的设备，请勿跨订单勾选。</li>
+                                <li>系统会根据押金、维修费用和罚金自动计算总扣款和退款金额。</li>
+                                <li>保存后会自动：记录退租信息、更新订单状态为“已归还”（如该订单设备全部退完）、并将相关设备状态改为“可用”。</li>
+                            </ul>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success">保存退租记录并归还设备</button>
+                            <a href="/returns" class="btn btn-outline-secondary">取消</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card mb-3">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">选择要退租的设备</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive" style="max-height: 400px;">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 5%;">
+                                            <input type="checkbox" id="selectAllDevices">
+                                        </th>
+                                        <th>设备编号</th>
+                                        <th>产品型号</th>
+                                        <th>产品名称</th>
+                                        <th>租赁开始</th>
+                                        <th>租赁结束</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="deviceTableBody">
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted">请先选择客户</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+    // 所有进行中订单中的设备数据（后端传入）
+    const allDevices = <%- JSON.stringify(typeof devices !== 'undefined' ? devices : []) %>;
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const customerFilterHidden = document.getElementById('customerFilter');
+        const rentalOrderIdInput = document.getElementById('rentalOrderId');
+        const infoOrderNumber = document.getElementById('infoOrderNumber');
+        const infoCustomerName = document.getElementById('infoCustomerName');
+        const infoDeposit = document.getElementById('infoDeposit');
+        const repairCostInput = document.getElementById('repairCost');
+        const penaltyFeeInput = document.getElementById('penaltyFee');
+        const infoTotalDeduction = document.getElementById('infoTotalDeduction');
+        const infoRefundAmount = document.getElementById('infoRefundAmount');
+        const returnDateInput = document.getElementById('returnDate');
+        const deviceTableBody = document.getElementById('deviceTableBody');
+        const selectAllDevicesCheckbox = document.getElementById('selectAllDevices');
+        const returnForm = document.getElementById('returnForm');
+
+        let currentOrderId = null;
+
+        // 默认退租日期为今天
+        const today = new Date().toISOString().split('T')[0];
+        returnDateInput.value = today;
+
+        function renderDeviceTableByCustomer(customerId) {
+            if (!deviceTableBody) return;
+
+            console.log('正在加载客户设备列表，客户ID:', customerId);
+            console.log('所有设备数据:', allDevices);
+
+            deviceTableBody.innerHTML = '';
+            if (selectAllDevicesCheckbox) {
+                selectAllDevicesCheckbox.checked = false;
+            }
+
+            rentalOrderIdInput.value = '';
+            currentOrderId = null;
+            infoOrderNumber.textContent = '-';
+            infoCustomerName.textContent = '-';
+            infoDeposit.textContent = '0.00';
+            updateAmountInfo();
+
+            if (!customerId) {
+                deviceTableBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">请先选择客户</td></tr>';
+                return;
+            }
+
+            const filtered = allDevices.filter(d => String(d.customer_id) === String(customerId));
+            console.log('筛选后的设备:', filtered);
+
+            if (filtered.length === 0) {
+                deviceTableBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">该客户暂无在租设备</td></tr>';
+                return;
+            }
+
+            filtered.forEach(device => {
+                const tr = document.createElement('tr');
+                const deviceCode = device.device_code || device.serial_number || '-';
+                const productCode = device.product_code || '-';
+                const productName = device.product_name || '-';
+                const startDate = device.start_date ? String(device.start_date).substring(0, 10) : '-';
+                const endDate = device.end_date ? String(device.end_date).substring(0, 10) : '-';
+                const deposit = parseFloat(device.deposit || 0) || 0;
+
+                tr.innerHTML = `
+                    <td>
+                        <input type="checkbox" name="deviceItemIds" value="${device.item_id}"
+                               data-order-id="${device.order_id}"
+                               data-order-number="${device.order_number || ''}"
+                               data-customer-name="${device.customer_name || ''}"
+                               data-deposit="${deposit.toFixed(2)}">
+                    </td>
+                    <td>${deviceCode}</td>
+                    <td>${productCode}</td>
+                    <td>${productName}</td>
+                    <td>${startDate}</td>
+                    <td>${endDate}</td>
+                `;
+                deviceTableBody.appendChild(tr);
+            });
+        }
+
+        function updateAmountInfo() {
+            const deposit = parseFloat(infoDeposit.textContent || '0') || 0;
+            const repair = parseFloat(repairCostInput.value || '0') || 0;
+            const penalty = parseFloat(penaltyFeeInput.value || '0') || 0;
+            const total = repair + penalty;
+            const refund = Math.max(deposit - total, 0);
+
+            infoTotalDeduction.textContent = total.toFixed(2);
+            infoRefundAmount.textContent = refund.toFixed(2);
+        }
+
+        // 根据选择设备自动锁定订单（一次只能处理同一订单）
+        if (deviceTableBody) {
+            deviceTableBody.addEventListener('change', function (e) {
+                const target = e.target;
+                if (target && target.name === 'deviceItemIds') {
+                    const orderId = target.dataset.orderId;
+
+                    if (target.checked) {
+                        if (!currentOrderId) {
+                            currentOrderId = orderId;
+                            rentalOrderIdInput.value = orderId;
+
+                            const deposit = parseFloat(target.dataset.deposit || '0') || 0;
+                            infoOrderNumber.textContent = target.dataset.orderNumber || '-';
+                            infoCustomerName.textContent = target.dataset.customerName || '-';
+                            infoDeposit.textContent = deposit.toFixed(2);
+                            updateAmountInfo();
+                        } else if (orderId !== currentOrderId) {
+                            alert('一次退租处理仅支持同一订单下的设备，请勿跨订单勾选。');
+                            target.checked = false;
+                        }
+                    } else {
+                        const stillChecked = deviceTableBody.querySelectorAll('input[name="deviceItemIds"]:checked');
+                        if (stillChecked.length === 0) {
+                            currentOrderId = null;
+                            rentalOrderIdInput.value = '';
+                            infoOrderNumber.textContent = '-';
+                            infoCustomerName.textContent = '-';
+                            infoDeposit.textContent = '0.00';
+                            updateAmountInfo();
+                        }
+                    }
+                }
+            });
+        }
+
+        // 全选/取消全选设备
+        if (selectAllDevicesCheckbox) {
+            selectAllDevicesCheckbox.addEventListener('change', function () {
+                const checkboxes = deviceTableBody.querySelectorAll('input[name="deviceItemIds"]');
+                checkboxes.forEach(cb => {
+                    if (selectAllDevicesCheckbox.checked) {
+                        // 触发 change 事件以应用订单限制逻辑
+                        if (!cb.checked) {
+                            cb.checked = true;
+                            cb.dispatchEvent(new Event('change'));
+                        }
+                    } else {
+                        cb.checked = false;
+                    }
+                });
+            });
+        }
+
+        // 提交前校验至少选择一个设备和有效订单
+        if (returnForm) {
+            returnForm.addEventListener('submit', function (e) {
+                const checked = document.querySelectorAll('input[name="deviceItemIds"]:checked');
+                if (checked.length === 0) {
+                    alert('请至少选择一台要退租的设备');
+                    e.preventDefault();
+                    return;
+                }
+
+                if (!rentalOrderIdInput.value) {
+                    alert('未能识别对应的租赁订单，请重新选择设备');
+                    e.preventDefault();
+                }
+            });
+        }
+
+        // 客户搜索 autocomplete
+        const customerSearchInput = document.getElementById('customerSearchInput');
+        const customerAutocomplete = document.getElementById('customerAutocomplete');
+        const customerSearchBtn = document.getElementById('customerSearchBtn');
+        let customerDebounceTimer;
+
+        if (customerSearchInput) {
+            customerSearchInput.addEventListener('input', function() {
+                const keyword = this.value.trim();
+                console.log('客户搜索输入:', keyword);
+                
+                clearTimeout(customerDebounceTimer);
+                
+                if (keyword.length < 1) {
+                    customerAutocomplete.style.display = 'none';
+                    customerFilterHidden.value = '';
+                    renderDeviceTableByCustomer('');
+                    return;
+                }
+                
+                customerDebounceTimer = setTimeout(() => {
+                    console.log('开始搜索客户:', keyword);
+                    const url = `/api/autocomplete/customers?q=${encodeURIComponent(keyword)}&limit=10`;
+                    console.log('API URL:', url);
+                    
+                    fetch(url)
+                        .then(response => {
+                            console.log('API 响应状态:', response.status);
+                            return response.json();
+                        })
+                        .then(data => {
+                            console.log('API 返回数据:', data);
+                            if (data.success && data.data.length > 0) {
+                                renderCustomerAutocomplete(data.data);
+                            } else {
+                                console.log('没有找到匹配的客户');
+                                customerAutocomplete.style.display = 'none';
+                            }
+                        })
+                        .catch(err => {
+                            console.error('Autocomplete error:', err);
+                            customerAutocomplete.style.display = 'none';
+                        });
+                }, 300);
+            });
+
+            // 搜索按钮点击事件
+            if (customerSearchBtn) {
+                customerSearchBtn.addEventListener('click', function() {
+                    const keyword = customerSearchInput.value.trim();
+                    if (keyword.length >= 1) {
+                        customerSearchInput.dispatchEvent(new Event('input'));
+                    }
+                });
+            }
+
+            // 回车键处理
+            customerSearchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    customerAutocomplete.style.display = 'none';
+                    // 如果已有选中的客户ID，保持当前状态
+                }
+            });
+
+            function renderCustomerAutocomplete(results) {
+                customerAutocomplete.innerHTML = results.map(item => 
+                    `<button type="button" class="list-group-item list-group-item-action py-2" 
+                            data-id="${item.id}" 
+                            data-customer-code="${item.customer_code || ''}"
+                            data-value="${item.value}">
+                        ${item.label}
+                    </button>`
+                ).join('');
+                
+                customerAutocomplete.style.display = 'block';
+                
+                // 点击选项
+                customerAutocomplete.querySelectorAll('button').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const customerId = this.dataset.id;
+                        const customerName = this.dataset.value;
+                        
+                        console.log('选择客户 ID:', customerId, '名称:', customerName);
+                        
+                        customerSearchInput.value = customerName;
+                        customerFilterHidden.value = customerId;
+                        customerAutocomplete.style.display = 'none';
+                        
+                        // 加载该客户的设备列表
+                        renderDeviceTableByCustomer(customerId);
+                    });
+                });
+            }
+
+            // 点击外部关闭 autocomplete
+            document.addEventListener('click', function(e) {
+                if (!customerSearchInput.contains(e.target) && !customerAutocomplete.contains(e.target)) {
+                    customerAutocomplete.style.display = 'none';
+                }
+            });
+        }
+
+        // 客户切换时重置设备列表和订单信息（已由 autocomplete 处理）
+
+        // 初始化为空列表提示
+        renderDeviceTableByCustomer('');
+        repairCostInput.addEventListener('input', updateAmountInfo);
+        penaltyFeeInput.addEventListener('input', updateAmountInfo);
+    });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

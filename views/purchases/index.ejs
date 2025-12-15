@@ -1,0 +1,553 @@
+<%- include('../layout') %>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 style="font-size: 0.875rem;">采购管理</h5>
+        <div>
+            <a href="/purchases/records" class="btn btn-info me-2">
+                <i class="bi bi-clock-history"></i> 采购记录
+            </a>
+            <a href="/purchases/stats" class="btn btn-secondary me-2">
+                <i class="bi bi-graph-up"></i> 采购统计
+            </a>
+            <a href="/purchases/add" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> 新建采购
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        <!-- 搜索和筛选 -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="input-group position-relative">
+                    <input type="text" class="form-control" id="searchInput" placeholder="搜索批次号、供应商或配件名称..." autocomplete="off">
+                    <button class="btn btn-outline-secondary" type="button" id="searchBtn">
+                        <i class="bi bi-search"></i>
+                    </button>
+                    <div id="autocompleteResults" class="list-group position-absolute w-100" style="top: 100%; left: 0; z-index: 1050; max-height: 300px; overflow-y: auto; display: none;"></div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" id="supplierFilter">
+                    <option value="">所有供应商</option>
+                    <% if (typeof suppliers !== 'undefined' && suppliers) { %>
+                        <% suppliers.forEach(supplier => { %>
+                        <option value="<%= supplier.id %>" <%= (typeof selectedSupplierId !== 'undefined' && selectedSupplierId && String(selectedSupplierId) == String(supplier.id)) ? 'selected' : '' %>><%= supplier.name %></option>
+                        <% }) %>
+                    <% } %>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" id="statusFilter">
+                    <option value="" <%= (typeof selectedStatus === 'undefined' || !selectedStatus) ? 'selected' : '' %>>所有状态</option>
+                    <option value="pending" <%= (typeof selectedStatus !== 'undefined' && selectedStatus === 'pending') ? 'selected' : '' %>>待审批</option>
+                    <option value="approved" <%= (typeof selectedStatus !== 'undefined' && selectedStatus === 'approved') ? 'selected' : '' %>>已审批</option>
+                    <option value="delivered" <%= (typeof selectedStatus !== 'undefined' && selectedStatus === 'delivered') ? 'selected' : '' %>>已到货</option>
+                    <option value="completed" <%= (typeof selectedStatus !== 'undefined' && selectedStatus === 'completed') ? 'selected' : '' %>>已完成</option>
+                    <option value="cancelled" <%= (typeof selectedStatus !== 'undefined' && selectedStatus === 'cancelled') ? 'selected' : '' %>>已取消</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" id="sortBy">
+                    <option value="batch_no" <%= (typeof selectedSortBy !== 'undefined' && selectedSortBy === 'batch_no') ? 'selected' : '' %>>按批次号</option>
+                    <option value="supplier_name" <%= (typeof selectedSortBy !== 'undefined' && selectedSortBy === 'supplier_name') ? 'selected' : '' %>>按供应商</option>
+                    <option value="purchase_date" <%= (typeof selectedSortBy !== 'undefined' && selectedSortBy === 'purchase_date') ? 'selected' : '' %>>按采购日期</option>
+                    <option value="total_amount" <%= (typeof selectedSortBy !== 'undefined' && selectedSortBy === 'total_amount') ? 'selected' : '' %>>按总金额</option>
+                    <option value="expected_delivery_date" <%= (typeof selectedSortBy !== 'undefined' && selectedSortBy === 'expected_delivery_date') ? 'selected' : '' %>>按预计到货日期</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" id="sortOrder">
+                    <option value="asc" <%= (typeof selectedSortOrder !== 'undefined' && selectedSortOrder === 'asc') ? 'selected' : '' %>>升序</option>
+                    <option value="desc" <%= (typeof selectedSortOrder === 'undefined' || selectedSortOrder === 'desc') ? 'selected' : '' %>>降序</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- 采购统计信息 -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card bg-light">
+                    <div class="card-body text-center">
+                        <h6 class="card-title">总采购批次</h6>
+                        <h3 class="text-primary"><%= (typeof totalStats !== 'undefined' && totalStats) ? totalStats.totalBatches : 0 %></h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-light">
+                    <div class="card-body text-center">
+                        <h6 class="card-title">本月采购金额</h6>
+                        <h3 class="text-info">¥<%= (typeof totalStats !== 'undefined' && totalStats) ? parseFloat(totalStats.monthlyAmount || 0).toFixed(2) : '0.00' %></h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-light">
+                    <div class="card-body text-center">
+                        <h6 class="card-title">待审批批次</h6>
+                        <h3 class="text-warning"><%= (typeof totalStats !== 'undefined' && totalStats) ? totalStats.pendingBatches : 0 %></h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-light">
+                    <div class="card-body text-center">
+                        <h6 class="card-title">未到货批次</h6>
+                        <h3 class="text-success"><%= (typeof totalStats !== 'undefined' && totalStats) ? totalStats.notDeliveredBatches : 0 %></h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 采购列表 -->
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>批次号</th>
+                        <th>供应商</th>
+                        <th>配件名称</th>
+                        <th>采购数量</th>
+                        <th>采购日期</th>
+                        <th>预计到货</th>
+                        <th>总金额</th>
+                        <th>已支付</th>
+                        <th>状态</th>
+                        <th>创建人</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% if (typeof batches !== 'undefined' && batches.length > 0) { %>
+                        <% batches.forEach(batch => { %>
+                        <tr>
+                            <td><%= batch.batch_no %></td>
+                            <td><%= batch.supplier_name || '未知供应商' %></td>
+                            <td><%= batch.accessory_names || '-' %></td>
+                            <td><%= batch.accessory_quantity || 0 %></td>
+                            <td><%= moment(batch.purchase_date).format('YYYY-MM-DD') %></td>
+                            <td><%= batch.expected_delivery_date ? moment(batch.expected_delivery_date).format('YYYY-MM-DD') : '未设定' %></td>
+                            <td>¥<%= parseFloat(batch.total_amount || 0).toFixed(2) %></td>
+                            <td>¥<%= parseFloat(batch.paid_amount || 0).toFixed(2) %></td>
+                            <td>
+                                <% 
+                                let statusClass = 'secondary';
+                                let statusText = batch.status;
+                                if (batch.status === 'pending') {
+                                    statusClass = 'warning'; statusText = '待审批';
+                                } else if (batch.status === 'approved') {
+                                    statusClass = 'info'; statusText = '已审批';
+                                } else if (batch.status === 'delivered') {
+                                    statusClass = 'primary'; statusText = '已到货';
+                                } else if (batch.status === 'completed') {
+                                    statusClass = 'success'; statusText = '已完成';
+                                } else if (batch.status === 'cancelled') {
+                                    statusClass = 'danger'; statusText = '已取消';
+                                }
+                                %>
+                                <span class="badge bg-<%= statusClass %>"><%= statusText %></span>
+                            </td>
+                            <td><%= batch.created_by_name || '系统' %></td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <a href="/purchases/view/<%= batch.id %>" class="btn btn-outline-primary" title="查看详情">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <% if (batch.status === 'pending' && (user.role === 'admin' || user.role === 'finance')) { %>
+                                        <button type="button" class="btn btn-outline-success" onclick="approvePurchase(<%= batch.id %>)" title="审批">
+                                            <i class="bi bi-check-circle"></i>
+                                        </button>
+                                    <% } %>
+                                    <% if (batch.status === 'approved' && (user.role === 'admin' || user.role === 'finance')) { %>
+                                        <button type="button" class="btn btn-outline-info" onclick="markDelivered(<%= batch.id %>)" title="到货">
+                                            <i class="bi bi-truck"></i>
+                                        </button>
+                                    <% } %>
+                                    <% if (batch.status === 'delivered' && (user.role === 'admin')) { %>
+                                        <button type="button" class="btn btn-outline-secondary" onclick="completePurchase(<%= batch.id %>)" title="完成">
+                                            <i class="bi bi-check2-all"></i>
+                                        </button>
+                                    <% } %>
+                                    <% if (batch.status === 'pending' && (user.role === 'admin' || user.role === 'finance')) { %>
+                                        <button type="button" class="btn btn-outline-danger" onclick="deletePurchase(<%= batch.id %>, '<%= batch.batch_no %>')" title="删除">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    <% } %>
+                                </div>
+                            </td>
+                        </tr>
+                        <% }) %>
+                    <% } else { %>
+                        <tr>
+                            <td colspan="11" class="text-center py-4">暂无采购记录</td>
+                        </tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 分页 -->
+        <nav aria-label="采购列表分页">
+            <ul class="pagination justify-content-center">
+                <% 
+                // 使用局部变量避免重名问题
+                const pageCurrent = typeof currentPage !== 'undefined' ? currentPage : 1;
+                const pagesTotal = typeof totalPages !== 'undefined' ? totalPages : 1;
+                
+                if (pageCurrent > 1) { 
+                %>
+                <li class="page-item">
+                    <a class="page-link" href="?page=<%= pageCurrent - 1 %>">上一页</a>
+                </li>
+                <% } %>
+
+                <% 
+                const startPage = Math.max(1, pageCurrent - 2);
+                const endPage = Math.min(pagesTotal, pageCurrent + 2);
+                
+                for (let i = 1; i <= pagesTotal; i++) { 
+                %>
+                <li class="page-item <%= (i === pageCurrent) ? 'active' : '' %>">
+                    <a class="page-link" href="?page=<%= i %>"><%= i %></a>
+                </li>
+                <% } %>
+
+                <% 
+                if (pageCurrent < pagesTotal) { 
+                %>
+                <li class="page-item">
+                    <a class="page-link" href="?page=<%= pageCurrent + 1 %>">下一页</a>
+                </li>
+                <% } %>
+            </ul>
+        </nav>
+    </div>
+</div>
+
+<!-- 删除确认模态框 -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">确认删除</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>确定要删除此采购批次吗？此操作不可撤销！</p>
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    注意：删除采购批次将同时删除相关的采购记录和库存记录。
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">确认删除</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%- include('../base-footer') %>
+
+<script>
+// 所有初始化代码都放在 DOMContentLoaded 中
+document.addEventListener('DOMContentLoaded', function() {
+    // 删除按钮事件
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    let deleteId = null;
+
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            deleteId = this.getAttribute('data-id');
+            deleteModal.show();
+        });
+    });
+
+    document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+        if (deleteId) {
+            window.location.href = `/purchases/delete/${deleteId}`;
+        }
+    });
+
+    // 搜索功能
+    const searchBtn = document.getElementById('searchBtn');
+    const searchInput = document.getElementById('searchInput');
+    const autocompleteResults = document.getElementById('autocompleteResults');
+    const supplierFilter = document.getElementById('supplierFilter');
+    const statusFilter = document.getElementById('statusFilter');
+    const sortByFilter = document.getElementById('sortBy');
+    const sortOrderFilter = document.getElementById('sortOrder');
+    let debounceTimer;
+
+    // 执行搜索的函数
+    function performSearch() {
+        autocompleteResults.style.display = 'none';
+        
+        const searchTerm = searchInput.value.trim();
+        const supplier = supplierFilter.value;
+        const status = statusFilter.value;
+        const sortBy = sortByFilter.value;
+        const sortOrder = sortOrderFilter.value;
+
+        // 直接构建URL
+        let url = '/purchases?';
+        if (searchTerm) url += `search=${encodeURIComponent(searchTerm)}&`;
+        if (supplier) url += `supplier=${encodeURIComponent(supplier)}&`;
+        if (status) url += `status=${encodeURIComponent(status)}&`;
+        if (sortBy) url += `sort=${encodeURIComponent(sortBy)}&`;
+        if (sortOrder) url += `order=${encodeURIComponent(sortOrder)}&`;
+        
+        // 移除最后的&
+        if (url.endsWith('&')) {
+            url = url.slice(0, -1);
+        }
+        
+        window.location.href = url;
+    }
+
+    // Autocomplete 功能 - 支持批次号和供应商
+    searchInput.addEventListener('input', function() {
+        const keyword = this.value.trim();
+        
+        clearTimeout(debounceTimer);
+        
+        if (keyword.length < 1) {
+            autocompleteResults.style.display = 'none';
+            return;
+        }
+        
+        debounceTimer = setTimeout(() => {
+            // 同时搜索批次号和供应商
+            Promise.all([
+                fetch(`/api/autocomplete/batches?q=${encodeURIComponent(keyword)}&limit=5`).then(r => r.json()),
+                fetch(`/api/autocomplete/suppliers?q=${encodeURIComponent(keyword)}&limit=5`).then(r => r.json())
+            ])
+            .then(([batchData, supplierData]) => {
+                const results = [];
+                
+                if (batchData.success && batchData.data.length > 0) {
+                    results.push({ type: 'header', label: '批次号' });
+                    results.push(...batchData.data.map(item => ({ ...item, type: 'batch' })));
+                }
+                
+                if (supplierData.success && supplierData.data.length > 0) {
+                    results.push({ type: 'header', label: '供应商' });
+                    results.push(...supplierData.data.map(item => ({ ...item, type: 'supplier' })));
+                }
+                
+                if (results.length > 0) {
+                    renderAutocomplete(results);
+                } else {
+                    autocompleteResults.style.display = 'none';
+                }
+            })
+            .catch(err => {
+                console.error('Autocomplete error:', err);
+                autocompleteResults.style.display = 'none';
+            });
+        }, 300);
+    });
+
+    function renderAutocomplete(results) {
+        autocompleteResults.innerHTML = results.map(item => {
+            if (item.type === 'header') {
+                return `<div class="list-group-item bg-light fw-bold py-1 px-2" style="font-size: 0.85rem;">${item.label}</div>`;
+            }
+            return `<button type="button" class="list-group-item list-group-item-action py-2" data-value="${item.value}">
+                ${item.label}
+            </button>`;
+        }).join('');
+        
+        autocompleteResults.style.display = 'block';
+        
+        // 点击选项
+        autocompleteResults.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', function() {
+                searchInput.value = this.dataset.value;
+                autocompleteResults.style.display = 'none';
+                performSearch();
+            });
+        });
+    }
+
+    // 点击外部关闭 autocomplete
+    document.addEventListener('click', function(e) {
+        if (!searchInput.contains(e.target) && !autocompleteResults.contains(e.target)) {
+            autocompleteResults.style.display = 'none';
+        }
+    });
+    
+    // 搜索按钮点击事件
+    if (searchBtn) {
+        searchBtn.addEventListener('click', performSearch);
+    }
+
+    // 搜索框回车事件
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            performSearch();
+        }
+    });
+
+    // 筛选条件变化时自动搜索
+    supplierFilter.addEventListener('change', performSearch);
+    statusFilter.addEventListener('change', performSearch);
+    sortByFilter.addEventListener('change', performSearch);
+    sortOrderFilter.addEventListener('change', performSearch);
+});
+
+// 审批采购
+function approvePurchase(batchId) {
+    if (confirm('确定要审批通过这个采购批次吗？')) {
+        fetch('/purchases/approve/' + batchId, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 使用toast通知替代alert
+                showToast('审批成功！', 'success');
+                // 延迟1秒后刷新页面，让用户看到toast通知
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast('审批失败：' + data.message, 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('操作失败，请稍后重试', 'danger');
+        });
+    }
+}
+
+// Toast通知函数
+function showToast(message, type = 'info') {
+    // 创建toast容器（如果不存在）
+    let toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toastContainer';
+        toastContainer.style.position = 'fixed';
+        toastContainer.style.top = '20px';
+        toastContainer.style.right = '20px';
+        toastContainer.style.zIndex = '9999';
+        document.body.appendChild(toastContainer);
+    }
+    
+    // 创建toast元素
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center text-white bg-${type} border-0`;
+    toast.setAttribute('role', 'alert');
+    toast.setAttribute('aria-live', 'assertive');
+    toast.setAttribute('aria-atomic', 'true');
+    toast.style.minWidth = '250px';
+    toast.style.marginBottom = '10px';
+    
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">
+                ${message}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    `;
+    
+    // 添加到容器
+    toastContainer.appendChild(toast);
+    
+    // 初始化Bootstrap toast
+    const bsToast = new bootstrap.Toast(toast, {
+        autohide: true,
+        delay: 3000
+    });
+    
+    // 显示toast
+    bsToast.show();
+    
+    // 监听隐藏事件，从DOM中移除
+    toast.addEventListener('hidden.bs.toast', function() {
+        toast.remove();
+    });
+}
+
+// 标记到货
+function markDelivered(batchId) {
+    if (confirm('确定要将此采购批次标记为已到货吗？')) {
+        fetch('/purchases/delivered/' + batchId, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('标记成功！', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast('操作失败：' + data.message, 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('操作失败，请稍后重试', 'danger');
+        });
+    }
+}
+
+// 完成采购
+function completePurchase(batchId) {
+    if (confirm('确定要完成此采购批次吗？')) {
+        fetch('/purchases/complete/' + batchId, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('操作成功！', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast('操作失败：' + data.message, 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('操作失败，请稍后重试', 'danger');
+        });
+    }
+}
+
+// 删除采购
+function deletePurchase(batchId, batchNo) {
+    if (confirm(`确定要删除采购批次 "${batchNo}" 吗？\n\n注意：删除后将无法恢复，请谨慎操作！`)) {
+        if (confirm(`再次确认：您确定要删除采购批次 "${batchNo}" 吗？`)) {
+            fetch('/purchases/delete/' + batchId, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('删除成功！');
+                    location.reload();
+                } else {
+                    alert('删除失败：' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('删除失败，请稍后重试');
+            });
+        }
+    }
+}
+</script>

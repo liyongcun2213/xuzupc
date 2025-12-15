@@ -1,0 +1,211 @@
+<%- include('../layout') %>
+
+<div class="container-fluid mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h4>调整租金</h4>
+            <% if (customerName) { %>
+                <p class="text-muted mb-0">当前客户：<strong><%= customerName %></strong></p>
+            <% } %>
+        </div>
+        <a href="/rental-orders" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> 返回租赁管理
+        </a>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">调整参数</h5>
+        </div>
+        <div class="card-body">
+            <form id="adjustForm" method="POST" action="/rental-orders/adjust-rent">
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label for="adjustDate" class="form-label">调整生效日期 <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="adjustDate" name="adjustDate" required>
+                        <div class="form-text">用于计算调整前后租金的时间分界点（目前仅记录）。</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="newMonthlyRate" class="form-label">新的月租金 <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text">¥</span>
+                            <input type="number" step="0.01" min="0" class="form-control" id="newMonthlyRate" name="newMonthlyRate" required>
+                        </div>
+                        <div class="form-text">调整为统一的新月租金（对所有勾选设备生效）。</div>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end justify-content-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-cash-coin"></i> 执行调整
+                        </button>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="mb-2 d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-3">
+                        <h5 class="mb-0">在租设备列表</h5>
+                        <span class="text-muted small">仅展示“进行中”订单且未退租的设备</span>
+                    </div>
+                    <div style="max-width: 320px;">
+                        <div class="input-group input-group-sm">
+                            <input type="text" class="form-control" id="rentalDevicesSearchInput" placeholder="搜索设备编号 / 规格配置 / 产品名称">
+                            <button class="btn btn-outline-secondary" type="button" id="rentalDevicesSearchBtn">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-responsive" style="max-height: 500px;">
+                    <table class="table table-hover table-sm align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 4%;">
+                                    <input type="checkbox" id="selectAllItems">
+                                </th>
+                                <th>订单号</th>
+                                <th>设备编号</th>
+                                <th>规格配置</th>
+                                <th>产品名称</th>
+                                <th>当前月租金</th>
+                                <th>日租金</th>
+                                <th>起租日期</th>
+                                <th>预计结束日期</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (items && items.length > 0) { %>
+                                <% items.forEach(item => { %>
+                                    <tr>
+                                        <td>
+                                            <input type="checkbox" name="itemIds" value="<%= item.item_id %>">
+                                        </td>
+                                        <td><%= item.order_number || '-' %></td>
+                                        <td><%= item.device_code || item.serial_number || '-' %></td>
+                                        <td><%= item.specifications || item.product_specifications || item.product_code || '-' %></td>
+                                        <td><%= item.product_name || '-' %></td>
+                                        <td>¥<%= (Number(item.monthly_rate) || 0).toFixed(2) %></td>
+                                        <td>¥<%= (Number(item.daily_rate) || 0).toFixed(2) %></td>
+                                        <td><%= item.start_date ? moment(item.start_date).format('YYYY-MM-DD') : '-' %></td>
+                                        <td><%= item.end_date ? moment(item.end_date).format('YYYY-MM-DD') : '-' %></td>
+                                    </tr>
+                                <% }) %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="9" class="text-center text-muted py-4">当前没有处于“进行中”且未退租的设备</td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const adjustDateInput = document.getElementById('adjustDate');
+    const selectAllItems = document.getElementById('selectAllItems');
+    const adjustForm = document.getElementById('adjustForm');
+    const searchInput = document.getElementById('rentalDevicesSearchInput');
+    const searchBtn = document.getElementById('rentalDevicesSearchBtn');
+
+    // 默认调整日期为今天
+    if (adjustDateInput) {
+        const today = new Date().toISOString().split('T')[0];
+        adjustDateInput.value = today;
+    }
+
+    // 全选/取消全选
+    if (selectAllItems) {
+        selectAllItems.addEventListener('change', function () {
+            document.querySelectorAll('input[name="itemIds"]').forEach(cb => {
+                cb.checked = selectAllItems.checked;
+            });
+        });
+    }
+
+    function applyDeviceSearch() {
+        const keyword = (searchInput && searchInput.value ? searchInput.value : '').trim().toLowerCase();
+
+        const rows = document.querySelectorAll('table tbody tr');
+        rows.forEach(row => {
+            const colspanCell = row.querySelector('td[colspan]');
+            if (colspanCell) {
+                if (!keyword) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+                return;
+            }
+
+            const cells = row.querySelectorAll('td');
+            if (cells.length < 6) {
+                return;
+            }
+
+            const deviceCodeText = (cells[2].textContent || '').toLowerCase(); // 设备编号列
+            const specsText = (cells[3].textContent || '').toLowerCase();       // 规格配置列
+            const productNameText = (cells[4].textContent || '').toLowerCase(); // 产品名称列
+            const monthlyRateText = (cells[5].textContent || '').toLowerCase(); // 当前月租金列
+
+            if (!keyword) {
+                row.style.display = '';
+                return;
+            }
+
+            const matched = deviceCodeText.includes(keyword)
+                || specsText.includes(keyword)
+                || productNameText.includes(keyword)
+                || monthlyRateText.includes(keyword);
+
+            row.style.display = matched ? '' : 'none';
+        });
+    }
+
+    if (searchBtn) {
+        searchBtn.addEventListener('click', function () {
+            applyDeviceSearch();
+        });
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                applyDeviceSearch();
+            }
+        });
+    }
+
+    // 提交前简单校验
+    if (adjustForm) {
+        adjustForm.addEventListener('submit', function (e) {
+            const checked = document.querySelectorAll('input[name="itemIds"]:checked');
+            if (checked.length === 0) {
+                alert('请至少选择一台要调整租金的设备');
+                e.preventDefault();
+                return;
+            }
+
+            const rateInput = document.getElementById('newMonthlyRate');
+            const rate = parseFloat(rateInput.value || '0');
+            if (isNaN(rate) || rate <= 0) {
+                alert('新的月租金必须为大于0的数字');
+                e.preventDefault();
+                return;
+            }
+
+            if (!confirm('确定要将选中设备的月租金调整为 ¥' + rate.toFixed(2) + ' 吗？')) {
+                e.preventDefault();
+            }
+        });
+    }
+});
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

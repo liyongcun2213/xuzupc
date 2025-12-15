@@ -1,0 +1,584 @@
+<%- include('layout') %>
+
+<style>
+    .status-badge {
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 500;
+    }
+    
+    .status-paid {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    
+    .status-overdue {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    
+    .status-terminated {
+        background-color: #d1ecf1;
+        color: #0c5460;
+    }
+    
+    .amount-positive {
+        color: #28a745;
+        font-weight: 500;
+    }
+    
+    .amount-negative {
+        color: #dc3545;
+        font-weight: 500;
+    }
+    
+    .amount-zero {
+        color: #666;
+    }
+    
+    .action-btns .btn {
+        margin-right: 5px;
+        font-size: 13px;
+    }
+</style>
+
+<div class="card">
+    <div class="card-header">
+        <h5><i class="bi bi-wallet2"></i> 客户消费管理</h5>
+    </div>
+    <div class="card-body">
+        <!-- 搜索和筛选区域 -->
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <label class="form-label">状态筛选</label>
+                <select class="form-select" id="statusFilter">
+                    <option value="all">全部</option>
+                    <option value="paid">已缴费</option>
+                    <option value="overdue">已欠费</option>
+                    <option value="terminated">已退租</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">关键字搜索</label>
+                <div class="position-relative">
+                    <input type="text" class="form-control" id="keywordInput" placeholder="客户编号或名称" autocomplete="off">
+                    <div id="autocompleteResults" class="list-group position-absolute w-100" style="top: 100%; left: 0; z-index: 1050; max-height: 300px; overflow-y: auto; display: none;"></div>
+                </div>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button class="btn btn-primary w-100" onclick="loadCustomers()">
+                    <i class="bi bi-search"></i> 查询
+                </button>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button class="btn btn-success w-100" onclick="refreshAllData()" title="重新计算消耗金额并生成/补齐账单">
+                    <i class="bi bi-arrow-clockwise"></i> 刷新
+                </button>
+            </div>
+        </div>
+        
+        <!-- 数据表格 -->
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>客户编号</th>
+                        <th>名称</th>
+                        <th>预付金额</th>
+                        <th>消耗金额</th>
+                        <th>余额</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="customerTableBody">
+                    <tr>
+                        <td colspan="7" class="text-center text-muted">
+                            <div class="py-4">
+                                <i class="bi bi-hourglass-split"></i> 加载中...
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- 缴费模态框 -->
+<div class="modal fade" id="paymentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-credit-card"></i> 客户缴费</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">客户名称</label>
+                    <input type="text" class="form-control" id="paymentCustomerName" readonly>
+                    <input type="hidden" id="paymentCustomerId">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">当前余额</label>
+                    <input type="text" class="form-control" id="paymentCurrentBalance" readonly>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">缴费金额 <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control" id="paymentAmount" placeholder="请输入缴费金额" step="0.01" min="0.01">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">缴费日期 <span class="text-danger">*</span></label>
+                    <input type="date" class="form-control" id="paymentDate" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">支付方式</label>
+                    <select class="form-select" id="paymentMethod">
+                        <option value="现金">现金</option>
+                        <option value="银行转账">银行转账</option>
+                        <option value="微信">微信</option>
+                        <option value="支付宝">支付宝</option>
+                        <option value="其他">其他</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">操作员</label>
+                    <input type="text" class="form-control" id="paymentOperator" readonly>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">备注</label>
+                    <textarea class="form-control" id="paymentNotes" rows="3" placeholder="请输入备注信息"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="submitPayment()">确认缴费</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 详情模态框 -->
+<div class="modal fade" id="detailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-info-circle"></i> 客户详情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detailModalBody">
+                <div class="text-center py-4">
+                    <i class="bi bi-hourglass-split"></i> 加载中...
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let paymentModal;
+    let detailModal;
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        paymentModal = new bootstrap.Modal(document.getElementById('paymentModal'));
+        detailModal = new bootstrap.Modal(document.getElementById('detailModal'));
+        
+        // Autocomplete 功能
+        const keywordInput = document.getElementById('keywordInput');
+        const autocompleteResults = document.getElementById('autocompleteResults');
+        let debounceTimer;
+
+        keywordInput.addEventListener('input', function() {
+            const keyword = this.value.trim();
+            
+            clearTimeout(debounceTimer);
+            
+            if (keyword.length < 1) {
+                autocompleteResults.style.display = 'none';
+                return;
+            }
+            
+            debounceTimer = setTimeout(() => {
+                fetch(`/api/autocomplete/customers?q=${encodeURIComponent(keyword)}&limit=10`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && data.data.length > 0) {
+                            renderAutocomplete(data.data);
+                        } else {
+                            autocompleteResults.style.display = 'none';
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Autocomplete error:', err);
+                        autocompleteResults.style.display = 'none';
+                    });
+            }, 300);
+        });
+
+        function renderAutocomplete(results) {
+            autocompleteResults.innerHTML = results.map(item => 
+                `<button type="button" class="list-group-item list-group-item-action py-2" data-value="${item.value}">
+                    ${item.label}
+                </button>`
+            ).join('');
+            
+            autocompleteResults.style.display = 'block';
+            
+            // 点击选项
+            autocompleteResults.querySelectorAll('button').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    keywordInput.value = this.dataset.value;
+                    autocompleteResults.style.display = 'none';
+                    loadCustomers();
+                });
+            });
+        }
+
+        // 点击外部关闭 autocomplete
+        document.addEventListener('click', function(e) {
+            if (!keywordInput.contains(e.target) && !autocompleteResults.contains(e.target)) {
+                autocompleteResults.style.display = 'none';
+            }
+        });
+
+        keywordInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                autocompleteResults.style.display = 'none';
+                loadCustomers();
+            }
+        });
+        
+        // 直接加载真实客户消费数据
+        loadCustomers();
+    });
+    
+    // 初始化测试数据
+    function initTestData() {
+        fetch('/api/customer-billing/test-data', {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log('测试数据初始化成功');
+                loadCustomers();
+            }
+        })
+        .catch(error => {
+            console.error('初始化测试数据失败:', error);
+            loadCustomers();
+        });
+    }
+    
+    // 加载客户列表
+    function loadCustomers() {
+        const status = document.getElementById('statusFilter').value;
+        const keyword = document.getElementById('keywordInput').value.trim();
+        
+        let url = `/api/customer-billing/list?status=${status}`;
+        if (keyword) {
+            url += `&keyword=${encodeURIComponent(keyword)}`;
+        }
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    renderCustomerTable(data.data);
+                } else {
+                    alert('加载失败：' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('加载客户列表失败:', error);
+                alert('加载失败，请检查网络连接');
+            });
+    }
+    
+    // 渲染客户表格
+    function renderCustomerTable(customers) {
+        const tbody = document.getElementById('customerTableBody');
+        
+        if (customers.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">
+                        <i class="bi bi-inbox"></i> 暂无数据
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        tbody.innerHTML = customers.map(customer => {
+            const statusClass = customer.status === 'paid' ? 'status-paid' : 
+                               customer.status === 'overdue' ? 'status-overdue' : 
+                               'status-terminated';
+            const statusText = customer.status === 'paid' ? '已缴费' : 
+                              customer.status === 'overdue' ? '欠费' : 
+                              '已退租';
+            
+            const balanceClass = customer.balance > 0 ? 'amount-positive' : 
+                                customer.balance < 0 ? 'amount-negative' : 
+                                'amount-zero';
+            
+            return `
+                <tr>
+                    <td>${customer.customer_code}</td>
+                    <td>${customer.customer_name}</td>
+                    <td>¥${parseFloat(customer.prepaid_amount).toFixed(2)}</td>
+                    <td>¥${parseFloat(customer.consumed_amount).toFixed(2)}</td>
+                    <td class="${balanceClass}">¥${parseFloat(customer.balance).toFixed(2)}</td>
+                    <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                    <td class="action-btns">
+                        <a class="btn btn-sm btn-primary" href="/customers/detail/${customer.customer_id}" target="_blank">
+                            <i class="bi bi-eye"></i> 详情
+                        </a>
+                        <button class="btn btn-sm btn-info" onclick="openLatestBill(${customer.customer_id})">
+                            <i class="bi bi-receipt"></i> 账单
+                        </button>
+                        <button class="btn btn-sm btn-success" onclick="showPaymentModal(${customer.customer_id}, '${customer.customer_name}', ${customer.balance})">
+                            <i class="bi bi-credit-card"></i> 缴费
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+    
+    // 显示缴费模态框
+    function showPaymentModal(customerId, customerName, balance) {
+        document.getElementById('paymentCustomerId').value = customerId;
+        document.getElementById('paymentCustomerName').value = customerName;
+        document.getElementById('paymentCurrentBalance').value = `¥${parseFloat(balance).toFixed(2)}`;
+        document.getElementById('paymentAmount').value = '';
+        
+        // 设置缴费日期为今天
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('paymentDate').value = today;
+        
+        document.getElementById('paymentMethod').value = '现金';
+        
+        // 自动填充当前登录用户名
+        document.getElementById('paymentOperator').value = '<%= user ? user.username : "" %>';
+        
+        document.getElementById('paymentNotes').value = '';
+        
+        paymentModal.show();
+    }
+    
+    // 提交缴费
+    function submitPayment() {
+        const customerId = document.getElementById('paymentCustomerId').value;
+        const amount = parseFloat(document.getElementById('paymentAmount').value);
+        const paymentDate = document.getElementById('paymentDate').value;
+        const paymentMethod = document.getElementById('paymentMethod').value;
+        const operator = document.getElementById('paymentOperator').value;
+        const notes = document.getElementById('paymentNotes').value;
+        
+        if (!amount || amount <= 0) {
+            alert('请输入正确的缴费金额');
+            return;
+        }
+        
+        if (!paymentDate) {
+            alert('请选择缴费日期');
+            return;
+        }
+        
+        fetch('/api/customer-billing/payment', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                customerId,
+                amount,
+                paymentDate,
+                paymentMethod,
+                operator,
+                notes
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('缴费成功！');
+                paymentModal.hide();
+                loadCustomers();
+            } else {
+                alert('缴费失败：' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('缴费失败:', error);
+            alert('缴费失败，请检查网络连接');
+        });
+    }
+    
+    // 显示详情模态框
+    function showDetailModal(customerId) {
+        document.getElementById('detailModalBody').innerHTML = `
+            <div class="text-center py-4">
+                <i class="bi bi-hourglass-split"></i> 加载中...
+            </div>
+        `;
+        detailModal.show();
+        
+        fetch(`/api/customer-billing/detail/${customerId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    renderDetailModal(data.data);
+                } else {
+                    alert('加载详情失败：' + data.message);
+                    detailModal.hide();
+                }
+            })
+            .catch(error => {
+                console.error('加载详情失败:', error);
+                alert('加载失败，请检查网络连接');
+                detailModal.hide();
+            });
+    }
+    
+    // 渲染详情模态框
+    function renderDetailModal(data) {
+        const account = data.account;
+        const statusText = account.status === 'paid' ? '已缴费' : 
+                          account.status === 'overdue' ? '已欠费' : 
+                          '已退租';
+        
+        let html = `
+            <h6 class="mb-3"><i class="bi bi-person-circle"></i> 账户信息</h6>
+            <table class="table table-sm">
+                <tr><th width="150">客户编号</th><td>${account.customer_code}</td></tr>
+                <tr><th>客户名称</th><td>${account.customer_name}</td></tr>
+                <tr><th>预付金额</th><td>¥${parseFloat(account.prepaid_amount).toFixed(2)}</td></tr>
+                <tr><th>待分配收款余额</th><td>¥${parseFloat(account.unallocated_amount || 0).toFixed(2)}</td></tr>
+                <tr><th>消耗金额</th><td>¥${parseFloat(account.consumed_amount).toFixed(2)}</td></tr>
+                <tr><th>当前余额</th><td>¥${parseFloat(account.balance).toFixed(2)}</td></tr>
+                <tr><th>账户状态</th><td>${statusText}</td></tr>
+            </table>
+            
+            <h6 class="mb-3 mt-4"><i class="bi bi-clock-history"></i> 近期缴费记录</h6>
+        `;
+        
+        if (data.payments && data.payments.length > 0) {
+            html += '<div class="table-responsive"><table class="table table-sm"><thead><tr><th>日期</th><th>金额</th><th>方式</th></tr></thead><tbody>';
+            data.payments.forEach(payment => {
+                html += `
+                    <tr>
+                        <td>${new Date(payment.payment_date).toLocaleDateString()}</td>
+                        <td>¥${parseFloat(payment.payment_amount).toFixed(2)}</td>
+                        <td>${payment.payment_method || '-'}</td>
+                    </tr>
+                `;
+            });
+            html += '</tbody></table></div>';
+        } else {
+            html += '<p class="text-muted">暂无缴费记录</p>';
+        }
+        
+        document.getElementById('detailModalBody').innerHTML = html;
+    }
+    
+    // 刷新所有数据（更新消耗 + 生成账单）
+    function refreshAllData() {
+        if (!confirm('确定要刷新所有数据吗？\n\n系统将执行以下操作：\n1. 从租赁订单重新计算所有客户的消耗金额\n2. 自动生成/补齐缺失的账期账单\n\n这个操作可能需要较长时间，请耐心等待。')) {
+            return;
+        }
+        
+        const btn = event.target.closest('button');
+        const originalHTML = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-hourglass-split"></i> 处理中...';
+        
+        // 创建进度提示Toast
+        const toastHtml = `
+            <div class="toast position-fixed top-0 start-50 translate-middle-x mt-3" role="alert" id="refreshProgressToast" data-bs-autohide="false">
+                <div class="toast-body bg-info text-white">
+                    <div class="d-flex align-items-center">
+                        <div class="spinner-border spinner-border-sm me-2" role="status">
+                            <span class="visually-hidden">加载中...</span>
+                        </div>
+                        <span id="refreshProgressText">正在更新消耗金额...</span>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', toastHtml);
+        const toastElement = document.getElementById('refreshProgressToast');
+        const toast = new bootstrap.Toast(toastElement);
+        toast.show();
+        
+        // 第一步：更新消耗
+        fetch('/api/customer-billing/update-all-consumed', {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                throw new Error(data.message || '更新消耗失败');
+            }
+            
+            // 更新进度提示
+            document.getElementById('refreshProgressText').textContent = '正在生成账单...';
+            
+            // 第二步：生成账单
+            return fetch('/api/customer-billing/generate-all-bills', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+        })
+        .then(response => response.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = originalHTML;
+            toast.hide();
+            setTimeout(() => toastElement.remove(), 500);
+            
+            if (data.success) {
+                const message = '刷新完成！\n\n已更新所有客户的消耗金额并生成账单。';
+                const details = data.details ? '\n\n详细信息：\n' + data.details : '';
+                alert(message + details);
+                loadCustomers();
+            } else {
+                alert('生成账单失败：' + (data.message || '未知错误'));
+            }
+        })
+        .catch(error => {
+            btn.disabled = false;
+            btn.innerHTML = originalHTML;
+            toast.hide();
+            setTimeout(() => toastElement.remove(), 500);
+            console.error('刷新失败:', error);
+            alert('刷新失败：' + error.message);
+        });
+    }
+    
+    // 打开客户最近一期账单
+    function openLatestBill(customerId) {
+        // 查询该客户的最新账单
+        fetch(`/api/customer-billing/latest-bill/${customerId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.data) {
+                    const bill = data.data;
+                    // 在新窗口打开账单详情页（注意路由是 /bills/ 不是 /bill/）
+                    window.open(`/customers/${customerId}/bills/${bill.id}`, '_blank');
+                } else {
+                    alert(data.message || '该客户暂无账单记录');
+                }
+            })
+            .catch(error => {
+                console.error('查询账单失败:', error);
+                alert('查询账单失败，请检查网络连接');
+            });
+    }
+</script>
+
+<%- include('base-footer') %>

@@ -1,0 +1,439 @@
+<%- include('../layout') %>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5>配件库存价值统计</h5>
+    </div>
+    <div class="card-body">
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <label for="periodSelect" class="form-label">统计周期</label>
+                <select class="form-select" id="periodSelect">
+                    <option value="month" <%= (typeof period !== 'undefined' && period === 'month') ? 'selected' : '' %>>按月</option>
+                    <option value="quarter" <%= (typeof period !== 'undefined' && period === 'quarter') ? 'selected' : '' %>>按季度</option>
+                    <option value="year" <%= (typeof period !== 'undefined' && period === 'year') ? 'selected' : '' %>>按年</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="categoryFilter" class="form-label">类别筛选</label>
+                <select class="form-select" id="categoryFilter">
+                    <option value="">所有类别</option>
+                    <% categories.forEach(category => { %>
+                    <option value="<%= category.id %>" <%= (typeof selectedCategoryId !== 'undefined' && selectedCategoryId && selectedCategoryId == category.id) ? 'selected' : '' %>><%= category.name %></option>
+                    <% }) %>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="startDate" class="form-label">开始日期</label>
+                <input type="date" class="form-control" id="startDate" value="<%= startDate %>">
+            </div>
+            <div class="col-md-3">
+                <label for="endDate" class="form-label">结束日期</label>
+                <input type="date" class="form-control" id="endDate" value="<%= endDate %>">
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-4 position-relative">
+                <label for="modelSearch" class="form-label">型号模糊搜索</label>
+                <input type="text" class="form-control" id="modelSearch" placeholder="输入配件名称或型号，例如 海纳、i7、1060..." value="<%= typeof modelKeyword !== 'undefined' ? modelKeyword : '' %>" autocomplete="off">
+                <div id="modelSuggestions" class="list-group position-absolute w-100" style="z-index: 1050; max-height: 260px; overflow-y: auto; top: 100%; left: 0; display: none;"></div>
+            </div>
+        </div>
+        
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card bg-light text-center">
+                    <div class="card-body">
+                        <h6 class="card-title">配件总数量</h6>
+                        <h3 class="text-primary"><%= stats.totalQuantity %></h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-light text-center">
+                    <div class="card-body">
+                        <h6 class="card-title">采购总价值</h6>
+                        <h3 class="text-info">¥<%= (Number(stats.originalValue) || 0).toFixed(2) %></h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-light text-center">
+                    <div class="card-body">
+                        <h6 class="card-title">当前总价值</h6>
+                        <h3 class="text-success">¥<%= (Number(stats.currentValue) || 0).toFixed(2) %></h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-light text-center">
+                    <div class="card-body">
+                        <h6 class="card-title">总贬值率</h6>
+                        <h3 class="text-danger"><%= (Number(stats.depreciationRate) || 0).toFixed(2) %>%</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">配件库存明细</h5>
+                <div class="col-md-4 position-relative">
+                    <input type="text" class="form-control" id="searchInput" placeholder="搜索配件名称、类别或品牌..." autocomplete="off">
+                    <div id="nameSuggestions" class="list-group position-absolute w-100" style="z-index: 1050; max-height: 260px; overflow-y: auto; top: 100%; left: 0; display: none;"></div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>配件名称</th>
+                                <th>类别</th>
+                                <th>品牌</th>
+                                <th>批次号</th>
+                                <th>采购数量</th>
+                                <th>库存数量</th>
+                                <th>出库数量</th>
+                                <th>采购价格</th>
+                                <th>当前单价</th>
+                                <th>采购总价值</th>
+                                <th>当前总价值</th>
+                                <th>贬值率</th>
+                                <th>贬值金额</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (typeof batchDetails !== 'undefined' && batchDetails && batchDetails.length > 0) { %>
+                                <% batchDetails.forEach(batch => { 
+                                    const purchaseQty = batch.purchase_quantity || 0;
+                                    const stockQty = batch.available_quantity != null ? batch.available_quantity : purchaseQty;
+                                    const outQty = (typeof batch.out_quantity !== 'undefined' && batch.out_quantity !== null)
+                                        ? batch.out_quantity
+                                        : (purchaseQty - stockQty);
+                                    const purchasePrice = batch.purchase_price || 0;
+                                    const currentPrice = batch.current_price || 0;
+                                    // 采购总价值按"库存数量 × 采购单价"计算
+                                    const batchOriginalValue = purchasePrice * stockQty;
+                                    const batchCurrentValue = currentPrice * stockQty;
+                                    const batchDepValue = batchOriginalValue - batchCurrentValue;
+                                    const batchDepRate = batchOriginalValue > 0 ? (batchDepValue / batchOriginalValue * 100) : 0;
+                                %>
+                                <tr>
+                                    <td><a href="/accessories/view/<%= batch.accessory_id %>"><%= batch.name %></a></td>
+                                    <td><%= batch.category_name %></td>
+                                    <td><%= batch.brand || '-' %></td>
+                                    <td><%= batch.batch_no || '-' %></td>
+                                    <td><%= purchaseQty %></td>
+                                    <td><%= stockQty %></td>
+                                    <td><%= outQty %></td>
+                                    <td>¥<%= (Number(purchasePrice) || 0).toFixed(2) %></td>
+                                    <td>¥<%= (Number(currentPrice) || 0).toFixed(2) %></td>
+                                    <td>¥<%= (Number(batchOriginalValue) || 0).toFixed(2) %></td>
+                                    <td>¥<%= (Number(batchCurrentValue) || 0).toFixed(2) %></td>
+                                    <td class="<%= batchDepRate > 20 ? 'text-danger' : (batchDepRate > 10 ? 'text-warning' : 'text-success') %>">
+                                        <%= batchDepRate.toFixed(2) %>%
+                                    </td>
+                                    <td class="text-danger">¥<%= (Number(batchDepValue) || 0).toFixed(2) %></td>
+                                </tr>
+                                <% }) %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="13" class="text-center text-muted">暂无批次采购数据</td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                        <tfoot>
+                            <tr class="fw-bold">
+                                <td colspan="4">总计</td>
+                                <td id="totalPurchaseQty">0</td>
+                                <td id="totalStockQty">0</td>
+                                <td id="totalOutQty">0</td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                                <td>¥<%= (Number(stats.currentValue) || 0).toFixed(2) %></td>
+                                <td><%= (Number(stats.depreciationRate) || 0).toFixed(2) %>%</td>
+                                <td class="text-danger">¥<%= (Number(stats.depreciationValue) || 0).toFixed(2) %></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 事件监听
+    document.getElementById('periodSelect').addEventListener('change', function() {
+        updateStats();
+    });
+    
+    document.getElementById('categoryFilter').addEventListener('change', function() {
+        updateStats();
+    });
+    
+    document.getElementById('startDate').addEventListener('change', function() {
+        updateStats();
+    });
+    
+    document.getElementById('endDate').addEventListener('change', function() {
+        updateStats();
+    });
+
+    const modelSearchInput = document.getElementById('modelSearch');
+    let modelDebounceTimer;
+    
+    if (modelSearchInput) {
+        modelSearchInput.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                modelSuggestionBox.style.display = 'none';
+                updateStats();
+            }
+        });
+        
+        // 使用 API 获取配件建议
+        modelSearchInput.addEventListener('input', function() {
+            const keyword = this.value.trim();
+            
+            clearTimeout(modelDebounceTimer);
+            
+            if (keyword.length < 1) {
+                modelSuggestionBox.style.display = 'none';
+                return;
+            }
+            
+            modelDebounceTimer = setTimeout(() => {
+                fetch(`/api/autocomplete/accessories?q=${encodeURIComponent(keyword)}&limit=15`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && data.data.length > 0) {
+                            renderModelSuggestions(data.data);
+                        } else {
+                            modelSuggestionBox.style.display = 'none';
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Autocomplete error:', err);
+                        modelSuggestionBox.style.display = 'none';
+                    });
+            }, 300);
+        });
+        
+        // 选择或直接修改后失去焦点时，自动刷新列表
+        modelSearchInput.addEventListener('change', function() {
+            updateStats();
+        });
+    }
+    
+    function renderModelSuggestions(results) {
+        modelSuggestionBox.innerHTML = '';
+        
+        results.forEach(item => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'list-group-item list-group-item-action py-1';
+            btn.textContent = item.label;
+            btn.addEventListener('click', function() {
+                modelSearchInput.value = item.value;
+                modelSuggestionBox.style.display = 'none';
+                updateStats();
+            });
+            modelSuggestionBox.appendChild(btn);
+        });
+        
+        modelSuggestionBox.style.display = 'block';
+    }
+    
+    // 搜索功能（带名称下拉联想）
+    const searchInput = document.getElementById('searchInput');
+    const tableRows = document.querySelectorAll('tbody tr');
+    const suggestionBox = document.getElementById('nameSuggestions');
+    const modelSuggestionBox = document.getElementById('modelSuggestions');
+    let searchDebounceTimer;
+
+    // 预先收集所有配件名称（去重）
+    const allAccessoryNames = [];
+    const nameSet = new Set();
+    tableRows.forEach(row => {
+        const nameCell = row.cells[0];
+        const nameText = nameCell ? nameCell.textContent.trim() : '';
+        if (nameText && !nameSet.has(nameText)) {
+            nameSet.add(nameText);
+            allAccessoryNames.push(nameText);
+        }
+    });
+
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase().trim();
+        
+        clearTimeout(searchDebounceTimer);
+
+        // 更新下拉建议 - 使用 API
+        if (searchTerm.length >= 1) {
+            searchDebounceTimer = setTimeout(() => {
+                fetch(`/api/autocomplete/accessories?q=${encodeURIComponent(searchTerm)}&limit=15`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && data.data.length > 0) {
+                            renderNameSuggestions(data.data);
+                        } else {
+                            suggestionBox.style.display = 'none';
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Autocomplete error:', err);
+                        suggestionBox.style.display = 'none';
+                    });
+            }, 300);
+        } else {
+            suggestionBox.style.display = 'none';
+        }
+        
+        // 过滤表格行
+        tableRows.forEach(row => {
+            const name = row.cells[0].textContent.toLowerCase();
+            const category = row.cells[1].textContent.toLowerCase();
+            const brand = row.cells[2].textContent.toLowerCase();
+            
+            if (!searchTerm) {
+                row.style.display = '';
+            } else if (name.includes(searchTerm) || category.includes(searchTerm) || brand.includes(searchTerm)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        // 更新总计行的显示
+        updateTotalRow();
+    });
+
+    function renderNameSuggestions(results) {
+        suggestionBox.innerHTML = '';
+
+        results.forEach(item => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'list-group-item list-group-item-action py-1';
+            btn.textContent = item.label;
+            btn.addEventListener('click', function() {
+                searchInput.value = item.value;
+                suggestionBox.style.display = 'none';
+                // 触发一次输入事件，复用过滤逻辑
+                searchInput.dispatchEvent(new Event('input'));
+            });
+            suggestionBox.appendChild(btn);
+        });
+
+        suggestionBox.style.display = 'block';
+    }
+
+    // 点击其他区域时收起下拉
+    document.addEventListener('click', function(event) {
+        if (suggestionBox && !suggestionBox.contains(event.target) && event.target !== searchInput) {
+            suggestionBox.style.display = 'none';
+        }
+        if (modelSuggestionBox && !modelSuggestionBox.contains(event.target) && event.target !== modelSearchInput) {
+            modelSuggestionBox.style.display = 'none';
+        }
+    });
+    
+    // 页面加载完成后，计算初始总计
+    updateInitialTotals();
+    
+    function updateInitialTotals() {
+        let totalPurchaseQty = 0;
+        let totalStockQty = 0;
+        let totalOutQty = 0;
+        
+        tableRows.forEach(row => {
+            // 跳过"暂无数据"行
+            if (row.cells[0] && row.cells[0].textContent.includes('暂无')) {
+                return;
+            }
+            
+            // 第 4、5、6 列分别是"采购数量"、"库存数量"、"出库数量"
+            const purchaseQty = parseInt(row.cells[4].textContent) || 0;
+            const stockQty = parseInt(row.cells[5].textContent) || 0;
+            const outQty = parseInt(row.cells[6].textContent) || 0;
+            
+            totalPurchaseQty += purchaseQty;
+            totalStockQty += stockQty;
+            totalOutQty += outQty;
+        });
+        
+        // 更新总计行
+        document.getElementById('totalPurchaseQty').textContent = totalPurchaseQty;
+        document.getElementById('totalStockQty').textContent = totalStockQty;
+        document.getElementById('totalOutQty').textContent = totalOutQty;
+    }
+    
+    function updateTotalRow() {
+        const visibleRows = Array.from(tableRows).filter(row => row.style.display !== 'none');
+        
+        let totalCurrentValue = 0;
+        let totalPurchaseQty = 0;
+        let totalStockQty = 0;
+        let totalOutQty = 0;
+        
+        visibleRows.forEach(row => {
+            // 第 4、5、6 列分别是"采购数量"、"库存数量"、"出库数量"
+            const purchaseQty = parseInt(row.cells[4].textContent) || 0;
+            const stockQty = parseInt(row.cells[5].textContent) || 0;
+            const outQty = parseInt(row.cells[6].textContent) || 0;
+            
+            // 第 9 列是"当前总价值"
+            const currentValue = parseFloat(row.cells[9].textContent.replace('¥', '').replace(',', '')) || 0;
+            
+            totalPurchaseQty += purchaseQty;
+            totalStockQty += stockQty;
+            totalOutQty += outQty;
+            totalCurrentValue += currentValue;
+        });
+        
+        // 获取页面整体统计数据
+        const depreciationRate = stats.depreciationRate || 0;
+        const depreciationValue = stats.depreciationValue || 0;
+        
+        // 更新总计行
+        const totalRow = document.querySelector('tfoot tr');
+        if (totalRow) {
+            // 更新采购数量、库存数量、出库数量的总计
+            document.getElementById('totalPurchaseQty').textContent = totalPurchaseQty;
+            document.getElementById('totalStockQty').textContent = totalStockQty;
+            document.getElementById('totalOutQty').textContent = totalOutQty;
+            
+            // 更新价值和贬值相关的总计
+            totalRow.cells[10].textContent = '¥' + Number(totalCurrentValue || 0).toFixed(2);
+            totalRow.cells[11].textContent = Number(depreciationRate || 0).toFixed(2) + '%';
+            totalRow.cells[12].textContent = '¥' + Number(depreciationValue || 0).toFixed(2);
+        }
+    }
+    
+    function updateStats() {
+        const period = document.getElementById('periodSelect').value;
+        const category = document.getElementById('categoryFilter').value;
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        const model = document.getElementById('modelSearch').value.trim();
+        
+        const params = new URLSearchParams();
+        params.append('period', period);
+        if (category) params.append('category', category);
+        if (model) params.append('model', model);
+        params.append('startDate', startDate);
+        params.append('endDate', endDate);
+        
+        window.location.href = `/accessories/stats?${params.toString()}`;
+    }
+});
+</script>

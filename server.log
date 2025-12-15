@@ -1,0 +1,4 @@
+服务器运行在 http://localhost:3000
+✓ 每日扣费定时任务已启动（每天凌晨2点执行）
+已连接到MySQL数据库
+已确保 accessory_asset_snapshots 表存在

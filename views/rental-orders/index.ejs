@@ -1,0 +1,612 @@
+<%- include('../layout') %>
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3">
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="exportOrders()">
+                <i class="bi bi-download"></i> 导出
+            </button>
+        </div>
+        <div class="btn-group">
+            <a href="/rental-orders/add" class="btn btn-primary btn-sm">
+                <i class="bi bi-plus-circle"></i> 新建租赁
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- 状态统计卡片 -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">待处理</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800"><%= stats.pending || 0 %></div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-clock fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">进行中</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800"><%= stats.active || 0 %></div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-shopping-cart fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">已过期</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800"><%= stats.expired || 0 %></div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">已归还</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800"><%= stats.returned || 0 %></div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 筛选和搜索栏 -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">筛选条件</h6>
+    </div>
+    <div class="card-body">
+        <form id="filterForm">
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label for="searchInput" class="form-label">搜索</label>
+                    <div class="position-relative">
+                        <input type="text" class="form-control" id="searchInput" placeholder="订单号、客户名称" autocomplete="off">
+                        <div id="autocompleteResults" class="list-group position-absolute w-100" style="top: 100%; left: 0; z-index: 1050; max-height: 300px; overflow-y: auto; display: none;"></div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label for="statusFilter" class="form-label">状态</label>
+                    <select class="form-select" id="statusFilter">
+                        <option value="">全部状态</option>
+                        <option value="pending">待处理</option>
+                        <option value="active">进行中</option>
+                        <option value="expired">已过期</option>
+                        <option value="returned">已归还</option>
+                        <option value="cancelled">已取消</option>
+                    </select>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label for="typeFilter" class="form-label">租赁类型</label>
+                    <select class="form-select" id="typeFilter">
+                        <option value="">全部类型</option>
+                        <option value="daily">日租</option>
+                        <option value="monthly">月租</option>
+                    </select>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label for="dateRange" class="form-label">日期范围</label>
+                    <select class="form-select" id="dateRange">
+                        <option value="">全部时间</option>
+                        <option value="today">今天</option>
+                        <option value="week">本周</option>
+                        <option value="month">本月</option>
+                        <option value="quarter">本季度</option>
+                        <option value="year">本年</option>
+                    </select>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="startDate" class="form-label">开始日期</label>
+                    <input type="date" class="form-control" id="startDate">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="endDate" class="form-label">结束日期</label>
+                    <input type="date" class="form-control" id="endDate">
+                </div>
+            </div>
+            <div class="d-flex justify-content-end">
+                <button type="button" class="btn btn-secondary me-2" onclick="resetFilters()">重置</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search"></i> 搜索
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 订单列表 -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        <h6 class="m-0 font-weight-bold text-primary">租赁订单列表</h6>
+        <div class="dropdown">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="viewOptions" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-eye"></i> 视图
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="viewOptions">
+                <li><a class="dropdown-item" href="#" onclick="changeView('table')">
+                    <i class="bi bi-table"></i> 表格视图
+                </a></li>
+                <li><a class="dropdown-item" href="#" onclick="changeView('card')">
+                    <i class="bi bi-grid-3x3-gap"></i> 卡片视图
+                </a></li>
+            </ul>
+        </div>
+    </div>
+    <div class="card-body">
+        <!-- 表格视图 -->
+        <div id="tableView">
+            <div class="table-responsive">
+                <table class="table table-bordered" id="rentalOrdersTable" width="100%" cellspacing="0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>订单号</th>
+                            <th>客户名称</th>
+                            <th>租赁类型</th>
+                            <th>设备数量</th>
+                            <th>开始日期</th>
+                            <th>结束日期</th>
+                            <th>总金额</th>
+                            <th>押金</th>
+                            <th>状态</th>
+                            <th>业务员</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% if (orders && orders.length > 0) { %>
+                            <% orders.forEach(order => { %>
+                                <tr>
+                                    <td>
+                                        <a href="/rental-orders/view/<%= order.id %>" class="text-decoration-none">
+                                            <%= order.order_number %>
+                                        </a>
+                                    </td>
+                                    <td><%= order.customer_name || '-' %></td>
+                                    <td>
+                                        <span class="badge bg-<%= order.rental_type === 'daily' ? 'primary' : 'info' %>">
+                                            <%= order.rental_type === 'daily' ? '日租' : '月租' %>
+                                        </span>
+                                    </td>
+                                    <td><%= order.device_count || 0 %></td>
+                                    <td><%= moment(order.start_date).format('YYYY-MM-DD') %></td>
+                                    <td><%= order.end_date ? moment(order.end_date).format('YYYY-MM-DD') : '-' %></td>
+                                    <td>¥<%= parseFloat(order.total_amount || 0).toFixed(2) %></td>
+                                    <td>¥<%= parseFloat(order.deposit || 0).toFixed(2) %></td>
+                                    <td>
+                                        <span class="badge bg-<%= 
+                                            order.status === 'pending' ? 'secondary' : 
+                                            order.status === 'active' ? 'primary' : 
+                                            order.status === 'expired' ? 'warning' : 
+                                            order.status === 'returned' ? 'success' : 'danger' 
+                                        %>">
+                                            <%= 
+                                                order.status === 'pending' ? '待处理' : 
+                                                order.status === 'active' ? '进行中' : 
+                                                order.status === 'expired' ? '已过期' : 
+                                                order.status === 'returned' ? '已归还' : '已取消' 
+                                            %>
+                                        </span>
+                                    </td>
+                                    <td><%= order.salesperson_name || '-' %></td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="/rental-orders/view/<%= order.id %>" class="btn btn-outline-primary" title="查看详情">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            <% if (order.status === 'pending') { %>
+                                                <button class="btn btn-outline-primary" onclick="startOrder(<%= order.id %>)" title="开始租赁">
+                                                    <i class="bi bi-play-circle"></i>
+                                                </button>
+                                            <% } %>
+                                            <% if (order.status === 'pending' || order.status === 'active') { %>
+                                                <a href="/rental-orders/edit/<%= order.id %>" class="btn btn-outline-success" title="编辑">
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                            <% } %>
+                                            <% if (order.status === 'active') { %>
+                                                <button class="btn btn-outline-warning" onclick="adjustRent(<%= order.customer_id %>)" title="调整租金">
+                                                    <i class="bi bi-cash-coin"></i>
+                                                </button>
+                                                <button class="btn btn-outline-info" onclick="returnOrder(<%= order.id %>)" title="归还">
+                                                    <i class="bi bi-arrow-return-left"></i>
+                                                </button>
+                                            <% } %>
+                                            <% if (order.status === 'pending' || order.status === 'active') { %>
+                                                <button class="btn btn-outline-danger" onclick="cancelOrder(<%= order.id %>)" title="取消">
+                                                    <i class="bi bi-x-circle"></i>
+                                                </button>
+                                            <% } %>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <% }) %>
+                        <% } else { %>
+                            <tr>
+                                <td colspan="11" class="text-center py-4">
+                                    <div class="text-muted">
+                                        <i class="bi bi-inbox fa-3x mb-3"></i>
+                                        <p class="h5">暂无租赁订单</p>
+                                        <p>点击"新建租赁"按钮创建您的第一个租赁订单</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- 卡片视图 -->
+        <div id="cardView" style="display: none;">
+            <div class="row">
+                <% if (orders && orders.length > 0) { %>
+                    <% orders.forEach(order => { %>
+                        <div class="col-md-4 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <span><%= order.order_number %></span>
+                                    <span class="badge bg-<%= 
+                                        order.status === 'pending' ? 'secondary' : 
+                                        order.status === 'active' ? 'primary' : 
+                                        order.status === 'expired' ? 'warning' : 
+                                        order.status === 'returned' ? 'success' : 'danger' 
+                                    %>">
+                                        <%= 
+                                            order.status === 'pending' ? '待处理' : 
+                                            order.status === 'active' ? '进行中' : 
+                                            order.status === 'expired' ? '已过期' : 
+                                            order.status === 'returned' ? '已归还' : '已取消' 
+                                        %>
+                                    </span>
+                                </div>
+                                <div class="card-body">
+                                    <h6 class="card-title"><%= order.customer_name || '-' %></h6>
+                                    <p class="card-text">
+                                        <small class="text-muted">租赁类型:</small> 
+                                        <span class="badge bg-<%= order.rental_type === 'daily' ? 'primary' : 'info' %>">
+                                            <%= order.rental_type === 'daily' ? '日租' : '月租' %>
+                                        </span>
+                                    </p>
+                                    <p class="card-text">
+                                        <small class="text-muted">租赁期限:</small> 
+                                        <%= moment(order.start_date).format('YYYY-MM-DD') %> 
+                                        至 
+                                        <%= order.end_date ? moment(order.end_date).format('YYYY-MM-DD') : '未设定' %>
+                                    </p>
+                                    <p class="card-text">
+                                        <small class="text-muted">总金额:</small> 
+                                        <span class="fw-bold">¥<%= parseFloat(order.total_amount || 0).toFixed(2) %></span>
+                                    </p>
+                                    <p class="card-text">
+                                        <small class="text-muted">押金:</small> 
+                                        <span>¥<%= parseFloat(order.deposit || 0).toFixed(2) %></span>
+                                    </p>
+                                </div>
+                                <div class="card-footer d-flex justify-content-between">
+                                    <a href="/rental-orders/view/<%= order.id %>" class="btn btn-sm btn-outline-primary">查看详情</a>
+                                    <div class="btn-group btn-group-sm">
+                                        <% if (order.status === 'pending') { %>
+                                            <button class="btn btn-sm btn-outline-primary" onclick="startOrder(<%= order.id %>)">
+                                                <i class="bi bi-play-circle"></i>
+                                            </button>
+                                        <% } %>
+                                        <% if (order.status === 'pending' || order.status === 'active') { %>
+                                            <a href="/rental-orders/edit/<%= order.id %>" class="btn btn-sm btn-outline-success">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                        <% } %>
+                                        <% if (order.status === 'active') { %>
+                                            <button class="btn btn-sm btn-outline-warning" onclick="adjustRent()">
+                                                <i class="bi bi-cash-coin"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-info" onclick="returnOrder(<%= order.id %>)">
+                                                <i class="bi bi-arrow-return-left"></i>
+                                            </button>
+                                        <% } %>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <% }) %>
+                <% } else { %>
+                    <div class="col-12">
+                        <div class="text-center py-4">
+                            <div class="text-muted">
+                                <i class="bi bi-inbox fa-4x mb-3"></i>
+                                <p class="h4">暂无租赁订单</p>
+                                <p>点击"新建租赁"按钮创建您的第一个租赁订单</p>
+                                <a href="/rental-orders/add" class="btn btn-primary">
+                                    <i class="bi bi-plus-circle"></i> 新建租赁
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 分页 -->
+<% if (typeof pagination !== 'undefined' && pagination.totalPages > 1) { %>
+<nav aria-label="分页导航">
+    <ul class="pagination justify-content-center">
+        <% if (pagination.currentPage > 1) { %>
+            <li class="page-item">
+                <a class="page-link" href="?page=<%= pagination.currentPage - 1 %>">上一页</a>
+            </li>
+        <% } %>
+        
+        <% for(let i = 1; i <= pagination.totalPages; i++) { %>
+            <% if (i === pagination.currentPage) { %>
+                <li class="page-item active">
+                    <span class="page-link"><%= i %></span>
+                </li>
+            <% } else { %>
+                <li class="page-item">
+                    <a class="page-link" href="?page=<%= i %>"><%= i %></a>
+                </li>
+            <% } %>
+        <% } %>
+        
+        <% if (pagination.currentPage < pagination.totalPages) { %>
+            <li class="page-item">
+                <a class="page-link" href="?page=<%= pagination.currentPage + 1 %>">下一页</a>
+            </li>
+        <% } %>
+    </ul>
+</nav>
+<% } %>
+
+<style>
+.border-left-primary {
+    border-left: 4px solid var(--primary-color) !important;
+}
+.border-left-success {
+    border-left: 4px solid var(--success-color) !important;
+}
+.border-left-info {
+    border-left: 4px solid #17a2b8 !important;
+}
+.border-left-warning {
+    border-left: 4px solid var(--warning-color) !important;
+}
+.text-gray-800 {
+    color: #5a5c69 !important;
+}
+.text-gray-300 {
+    color: #dddfeb !important;
+}
+</style>
+
+<script>
+// 筛选表单提交
+document.getElementById('filterForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    document.getElementById('autocompleteResults').style.display = 'none';
+    applyFilters();
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const autocompleteResults = document.getElementById('autocompleteResults');
+    let debounceTimer;
+
+    // Autocomplete 功能 - 支持订单号和客户
+    searchInput.addEventListener('input', function() {
+        const keyword = this.value.trim();
+        
+        clearTimeout(debounceTimer);
+        
+        if (keyword.length < 1) {
+            autocompleteResults.style.display = 'none';
+            return;
+        }
+        
+        debounceTimer = setTimeout(() => {
+            // 同时搜索订单号和客户
+            Promise.all([
+                fetch(`/api/autocomplete/orders?q=${encodeURIComponent(keyword)}&limit=5`).then(r => r.json()),
+                fetch(`/api/autocomplete/customers?q=${encodeURIComponent(keyword)}&limit=5`).then(r => r.json())
+            ])
+            .then(([orderData, customerData]) => {
+                const results = [];
+                
+                if (orderData.success && orderData.data.length > 0) {
+                    results.push({ type: 'header', label: '订单号' });
+                    results.push(...orderData.data.map(item => ({ ...item, type: 'order' })));
+                }
+                
+                if (customerData.success && customerData.data.length > 0) {
+                    results.push({ type: 'header', label: '客户' });
+                    results.push(...customerData.data.map(item => ({ ...item, type: 'customer' })));
+                }
+                
+                if (results.length > 0) {
+                    renderAutocomplete(results);
+                } else {
+                    autocompleteResults.style.display = 'none';
+                }
+            })
+            .catch(err => {
+                console.error('Autocomplete error:', err);
+                autocompleteResults.style.display = 'none';
+            });
+        }, 300);
+    });
+
+    function renderAutocomplete(results) {
+        autocompleteResults.innerHTML = results.map(item => {
+            if (item.type === 'header') {
+                return `<div class="list-group-item bg-light fw-bold py-1 px-2" style="font-size: 0.85rem;">${item.label}</div>`;
+            }
+            return `<button type="button" class="list-group-item list-group-item-action py-2" data-value="${item.value}">
+                ${item.label}
+            </button>`;
+        }).join('');
+        
+        autocompleteResults.style.display = 'block';
+        
+        // 点击选项
+        autocompleteResults.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', function() {
+                searchInput.value = this.dataset.value;
+                autocompleteResults.style.display = 'none';
+                applyFilters();
+            });
+        });
+    }
+
+    // 点击外部关闭 autocomplete
+    document.addEventListener('click', function(e) {
+        if (!searchInput.contains(e.target) && !autocompleteResults.contains(e.target)) {
+            autocompleteResults.style.display = 'none';
+        }
+    });
+
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            autocompleteResults.style.display = 'none';
+        }
+    });
+});
+
+// 应用筛选
+function applyFilters() {
+    const search = document.getElementById('searchInput').value;
+    const status = document.getElementById('statusFilter').value;
+    const type = document.getElementById('typeFilter').value;
+    const dateRange = document.getElementById('dateRange').value;
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    
+    let url = '/rental-orders?';
+    const params = new URLSearchParams();
+    
+    if (search) params.append('search', search);
+    if (status) params.append('status', status);
+    if (type) params.append('type', type);
+    if (dateRange) params.append('dateRange', dateRange);
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    
+    url += params.toString();
+    window.location.href = url;
+}
+
+// 重置筛选条件
+function resetFilters() {
+    document.getElementById('filterForm').reset();
+    window.location.href = '/rental-orders';
+}
+
+// 切换视图
+function changeView(view) {
+    const tableView = document.getElementById('tableView');
+    const cardView = document.getElementById('cardView');
+    
+    if (view === 'table') {
+        tableView.style.display = 'block';
+        cardView.style.display = 'none';
+    } else {
+        tableView.style.display = 'none';
+        cardView.style.display = 'block';
+    }
+}
+
+// 启动订单（从待处理 -> 进行中）
+function startOrder(id) {
+    if (!confirm('确定要将此订单状态改为“进行中”吗？')) {
+        return;
+    }
+
+    fetch(`/rental-orders/start/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('订单已设置为进行中');
+                window.location.reload();
+            } else {
+                alert('操作失败：' + (data.message || '未知错误'));
+            }
+        })
+        .catch(err => {
+            console.error('startOrder error:', err);
+            alert('操作失败，请稍后重试');
+        });
+}
+
+// 归还订单
+function returnOrder(id) {
+    if (confirm('确定要归还此订单吗？')) {
+        window.location.href = `/rental-orders/return/${id}`;
+    }
+}
+
+// 取消订单
+function cancelOrder(id) {
+    if (confirm('确定要取消此订单吗？此操作不可恢复！')) {
+        window.location.href = `/rental-orders/cancel/${id}`;
+    }
+}
+
+// 导出订单
+function exportOrders() {
+    window.location.href = '/rental-orders/export';
+}
+
+// 调整租金（跳转到调整页面）
+function adjustRent(customerId) {
+    if (customerId) {
+        window.location.href = '/rental-orders/adjust-rent?customerId=' + customerId;
+    } else {
+        window.location.href = '/rental-orders/adjust-rent';
+    }
+}
+
+// 初始化视图切换
+document.addEventListener('DOMContentLoaded', function() {
+    // 根据用户偏好设置默认视图
+    const savedView = localStorage.getItem('rentalOrdersView') || 'table';
+    changeView(savedView);
+});
+</script>
+
+<%- include('../base-footer') %>

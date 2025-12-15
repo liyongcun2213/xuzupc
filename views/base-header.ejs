@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>旭租电脑租赁系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- 本地 Bootstrap Icons 字体文件 -->
+    <link href="/fonts/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/custom.css">
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', 'Segoe UI', Roboto, sans-serif;
+            background-color: #f3f4f6;
+            color: #111827;
+        }
+        .sidebar {
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            z-index: 100;
+            padding: 1.25rem 0 0;
+            width: 240px;
+            background-color: #3c444d;
+            box-shadow: 2px 0 8px rgba(15, 23, 42, 0.45);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 0 1.25rem 1rem 1.25rem;
+            margin-bottom: 0.5rem;
+            border-bottom: 1px solid rgba(249, 250, 251, 0.08);
+        }
+
+        .sidebar-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: #f9fafb;
+            font-size: 1rem;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .sidebar-brand-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+            background: linear-gradient(135deg, #22c55e, #a7f3d0);
+        }
+
+        .sidebar-nav {
+            flex: 1 1 auto;
+            overflow-y: auto;
+            padding-top: 0.25rem;
+        }
+
+        .sidebar-footer {
+            padding: 0.75rem 1.25rem 1.25rem 1.25rem;
+            border-top: 1px solid rgba(249, 250, 251, 0.08);
+        }
+
+        .main-content {
+            margin-left: 240px;
+            padding: 2rem;
+            min-height: 100vh;
+            background-color: #f3f4f6;
+        }
+
+
+        .card {
+            border: none;
+            border-radius: 16px;
+            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+            margin-bottom: 1.5rem;
+            background-color: #ffffff;
+        }
+        .sidebar .nav-link {
+            color: #e5e7eb;
+            border-radius: 8px;
+            margin: 0.25rem 1rem;
+            padding: 0.75rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            transition: all 0.2s ease;
+            font-size: 0.95rem;
+        }
+        .sidebar .nav-link:hover {
+            color: #ffffff;
+            background-color: rgba(255, 255, 255, 0.06);
+        }
+        .sidebar .nav-link.active {
+            color: #10b981;
+            background-color: rgba(16, 185, 129, 0.16);
+            font-weight: 600;
+        }
+        .sidebar .nav-link i {
+            font-size: 1.1rem;
+            width: 20px;
+            text-align: center;
+        }
+
+        .card-header {
+            background-color: #ffffff;
+            border-bottom: 1px solid #e5e7eb;
+            font-weight: 600;
+            color: #111827;
+            padding: 1rem 1.5rem;
+        }
+
+        .user-name-link {
+            color: #374151;
+            padding: 0.5rem 0.875rem;
+            border-radius: 999px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            background-color: #f3f4f6;
+        }
+        .user-name-link:hover {
+            color: #111827;
+            background-color: #e5e7eb;
+        }
+
+        .sidebar-footer .user-name-link {
+            background-color: #f9fafb;
+            color: #111827;
+            font-weight: 600;
+            box-shadow: 0 4px 10px rgba(15, 23, 42, 0.25);
+        }
+
+        .sidebar-footer .user-name-link:hover {
+            background-color: #e5e7eb;
+            color: #111827;
+        }
+
+        .sidebar-footer .user-name-link i {
+            color: #6b7280;
+        }
+
+
+        .dropdown-menu {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.15);
+            border-radius: 10px;
+            padding: 0.5rem;
+        }
+        .dropdown-item {
+            color: #4b5563;
+            padding: 0.625rem 0.875rem;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .dropdown-item:hover {
+            background-color: #f3f4f6;
+            color: #111827;
+        }
+        .logout-link {
+            color: #dc2626;
+        }
+        .logout-link:hover {
+            color: #b91c1c;
+        }
+
+        .page-header {
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        h5 {
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        @media (max-width: 991.98px) {
+            .sidebar {
+                display: none;
+            }
+            .main-content {
+                margin-left: 0;
+                padding-top: 1rem;
+            }
+        }
+
+        /* 打印样式 */
+
+        @media print {
+            .sidebar,
+            .page-header,
+            .btn,
+            button {
+
+                display: none !important;
+            }
+            .main-content {
+                margin-left: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                flex: 0 0 100% !important;
+            }
+            body {
+                background-color: #ffffff;
+            }
+            .card {
+                box-shadow: none;
+                border: 1px solid #dee2e6;
+            }
+        }
+    </style>
+</head>
+<body>
+    <% if (typeof user !== 'undefined') { %>
+    <div class="container-fluid">
+        <div class="row">
+            <nav class="col-md-2 d-none d-md-block sidebar">
+                <div class="sidebar-sticky h-100 d-flex flex-column">
+                    <div class="sidebar-header">
+                        <a href="/dashboard" class="sidebar-brand">
+                            <span class="sidebar-brand-dot"></span>
+                            <span>旭租电脑租赁系统</span>
+                        </a>
+                    </div>
+                    <div class="sidebar-nav">
+                        <ul class="nav flex-column">
+
+                        <li class="nav-item">
+                            <a class="nav-link <%= (typeof active !== 'undefined' && active === 'dashboard') ? 'active' : '' %>" href="/dashboard">
+                                <i class="bi bi-speedometer2"></i>
+                                仪表板
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <%= (typeof active !== 'undefined' && active === 'basic-info') ? 'active' : '' %>" href="/basic-info">
+                                <i class="bi bi-info-circle"></i>
+                                基础信息管理
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <%= (typeof active !== 'undefined' && ['products', 'categories'].includes(active)) ? 'active' : '' %>" href="/products" data-bs-toggle="collapse" data-bs-target="#productMenu">
+                                <i class="bi bi-box"></i>
+                                产品管理
+                            </a>
+                            <div class="collapse <%= (typeof active !== 'undefined' && ['products', 'categories'].includes(active)) ? 'show' : '' %>" id="productMenu">
+                                <ul class="nav flex-column ms-3">
+                                    <li class="nav-item">
+                                        <a class="nav-link <%= (typeof active !== 'undefined' && active === 'products') ? 'active' : '' %>" href="/products">
+                                            <i class="bi bi-box"></i>
+                                            产品型号
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link <%= (typeof active !== 'undefined' && active === 'categories') ? 'active' : '' %>" href="/categories">
+                                            <i class="bi bi-tags"></i>
+                                            产品类别
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </li>
+
+
+
+                        <li class="nav-item">
+                            <a class="nav-link <%= (typeof active !== 'undefined' && active === 'devices') ? 'active' : '' %>" href="/devices">
+                                <i class="bi bi-laptop"></i>
+                                设备管理
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <%= (typeof active !== 'undefined' && active === 'accessories') ? 'active' : '' %>" href="/accessories">
+                                <i class="bi bi-cpu"></i>
+                                配件管理
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <%= (typeof active !== 'undefined' && active === 'purchases') ? 'active' : '' %>" href="/purchases">
+                                <i class="bi bi-cart"></i>
+                                采购管理
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <%= (typeof active !== 'undefined' && active === 'rental-orders') ? 'active' : '' %>" href="/rental-orders">
+                                <i class="bi bi-arrow-left-right"></i>
+                                租赁管理
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <%= (typeof active !== 'undefined' && active === 'returns') ? 'active' : '' %>" href="/returns">
+                                <i class="bi bi-arrow-return-left"></i>
+                                退租管理
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <%= (typeof active !== 'undefined' && active === 'finance') ? 'active' : '' %>" href="#" data-bs-toggle="collapse" data-bs-target="#financeMenu">
+                                <i class="bi bi-currency-dollar"></i>
+                                财务管理
+                            </a>
+                            <div class="collapse <%= (typeof active !== 'undefined' && ['finance', 'business-analysis'].includes(active)) ? 'show' : '' %>" id="financeMenu">
+                                <ul class="nav flex-column ms-3">
+                                    <li class="nav-item">
+                                        <a class="nav-link <%= (typeof active !== 'undefined' && active === 'finance') ? 'active' : '' %>" href="/finance">
+                                            <i class="bi bi-receipt"></i>
+                                            财务记录
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link <%= (typeof active !== 'undefined' && active === 'business-analysis') ? 'active' : '' %>" href="/finance/business-analysis">
+                                            <i class="bi bi-graph-up-arrow"></i>
+                                            经营分析
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <%= (typeof active !== 'undefined' && active === 'customer-billing') ? 'active' : '' %>" href="/customer-billing">
+                                <i class="bi bi-wallet2"></i>
+                                客户消费管理
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <%= (typeof active !== 'undefined' && active === 'rent-management') ? 'active' : '' %>" href="/rent-management">
+                                <i class="bi bi-currency-yen"></i>
+                                租金管理
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <%= (typeof active !== 'undefined' && active === 'assets') ? 'active' : '' %>" href="/assets">
+                                <i class="bi bi-graph-up-arrow"></i>
+                                资产统计
+                            </a>
+                        </li>
+                    </ul>
+                    </div>
+                    <div class="sidebar-footer">
+                        <div class="nav-item dropdown">
+                            <a class="nav-link user-name-link" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-person-circle"></i> <%= user.real_name %>
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="userDropdown">
+                                <li><a class="dropdown-item" href="/profile"><i class="bi bi-person"></i> 个人资料</a></li>
+                                <li><a class="dropdown-item" href="/settings"><i class="bi bi-gear"></i> 系统设置</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item logout-link" href="/logout"><i class="bi bi-box-arrow-right"></i> 退出系统</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+
+            <main role="main" class="col-md-10 ms-sm-auto main-content">
+                <div class="page-header">
+                    <h1 class="h2"><%= typeof pageTitle !== 'undefined' ? pageTitle : '旭租电脑租赁系统' %></h1>
+                </div>
+                
+                <% if (typeof successMessage !== 'undefined') { %>
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <%= successMessage %>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                <% } %>
+                
+                <% if (typeof errorMessage !== 'undefined') { %>
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <%= errorMessage %>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                <% } %>
+    <% } else { %>
+
+    <!-- 未登录用户显示的简单布局 -->
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card mt-5">
+                    <div class="card-body">
+                        <h1 class="text-center mb-4">旭租电脑租赁系统</h1>
+    <% } %>
