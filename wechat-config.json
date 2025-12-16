@@ -1,4 +1,6 @@
 {
   "appId": "wxa9543eb8b4fe563d",
-  "appSecret": "8a3436bde4ee5caa8cd7d66ed48ae1af"
+  "appSecret": "8a3436bde4ee5caa8cd7d66ed48ae1af",
+  "mpAppId": "wxd9cc4d1687299035",
+  "mpAppSecret": "edb8bf5dca051e01d2415a27caedb99c"
 }

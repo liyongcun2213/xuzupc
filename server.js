@@ -337,10 +337,13 @@ function getExternalBaseUrl(callback) {
     );
 }
 
-// 微信 JS-SDK 配置（使用服务号）
+// 微信 JS-SDK 配置（使用服务号 + 小程序）
 // 优先从环境变量读取 AppID 和 AppSecret，如果没有再从本地配置文件 wechat-config.json 读取
 let WECHAT_APP_ID = process.env.WECHAT_APP_ID || '';
 let WECHAT_APP_SECRET = process.env.WECHAT_APP_SECRET || '';
+// 小程序独立的 AppID / AppSecret（优先使用），没有配置时会退回到上面的 WECHAT_APP_ID/SECRET
+let WECHAT_MP_APP_ID = process.env.WECHAT_MP_APP_ID || '';
+let WECHAT_MP_APP_SECRET = process.env.WECHAT_MP_APP_SECRET || '';
 
 try {
     // wechat-config.json 需要放在项目根目录，与 server.js 同级
@@ -354,6 +357,14 @@ try {
 
     if (!WECHAT_APP_SECRET && wechatConfig && wechatConfig.appSecret) {
         WECHAT_APP_SECRET = wechatConfig.appSecret;
+    }
+
+    if (!WECHAT_MP_APP_ID && wechatConfig && wechatConfig.mpAppId) {
+        WECHAT_MP_APP_ID = wechatConfig.mpAppId;
+    }
+
+    if (!WECHAT_MP_APP_SECRET && wechatConfig && wechatConfig.mpAppSecret) {
+        WECHAT_MP_APP_SECRET = wechatConfig.mpAppSecret;
     }
 } catch (e) {
     // 如果配置文件不存在或解析失败，保持使用环境变量
@@ -462,14 +473,17 @@ function fetchWeChatOAuthAccessToken(code, callback) {
 
 // 微信小程序：根据 code 换取 openid/session_key
 function fetchWeChatMpSession(code, callback) {
-    if (!WECHAT_APP_ID || !WECHAT_APP_SECRET) {
-        return callback(new Error('WECHAT_APP_ID 或 WECHAT_APP_SECRET 未配置'));
+    const mpAppId = WECHAT_MP_APP_ID || WECHAT_APP_ID;
+    const mpAppSecret = WECHAT_MP_APP_SECRET || WECHAT_APP_SECRET;
+
+    if (!mpAppId || !mpAppSecret) {
+        return callback(new Error('小程序 AppID 或 AppSecret 未配置'));
     }
     if (!code) {
         return callback(new Error('缺少 code 参数'));
     }
 
-    const mpPath = `/sns/jscode2session?appid=${WECHAT_APP_ID}&secret=${WECHAT_APP_SECRET}&js_code=${encodeURIComponent(code)}&grant_type=authorization_code`;
+    const mpPath = `/sns/jscode2session?appid=${mpAppId}&secret=${mpAppSecret}&js_code=${encodeURIComponent(code)}&grant_type=authorization_code`;
 
     const options = {
         hostname: 'api.weixin.qq.com',
