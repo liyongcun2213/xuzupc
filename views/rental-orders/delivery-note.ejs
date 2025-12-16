@@ -193,9 +193,10 @@
                 <% Object.keys(itemsByCategory).forEach(category => { %>
                     <% itemsByCategory[category].forEach((item, idx) => { 
                         const quantity = item.quantity || 1;
-                        const monthlyRate = item.monthly_rate || 0;
+                        const monthlyRate = item.monthly_rate ? parseFloat(item.monthly_rate) : 0;
                         const monthlyAmount = quantity * monthlyRate;
                         const deviceValuePerUnit = (item.device_value || 0) * 1.5;
+
                         
                         totalMonthlyAmount += monthlyAmount;
                         totalDeviceValue += deviceValuePerUnit;

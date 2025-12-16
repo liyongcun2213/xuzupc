@@ -13154,16 +13154,18 @@ app.post('/api/customer-billing/generate-bills/:customerId', (req, res) => {
 
                 let periodsProcessed = 0;
 
-                // 为每个账期创建账单（仅当本期起距离刷新日至少10天时才生成）
+                // 为每个账期创建账单（仅跳过未来账期，本期起在刷新日之后不生成）
                 periods.forEach(period => {
                     const periodStartDate = new Date(period.start);
                     const diffDaysFromRefresh = Math.floor((today.getTime() - periodStartDate.getTime()) / (24 * 3600 * 1000));
-                    if (diffDaysFromRefresh < 10) {
-                        console.log(`  跳过账期 ${period.start} ~ ${period.end}：本期起距离刷新日不足10天（${diffDaysFromRefresh} 天）`);
+                    // 仅当本期起在刷新日之后（diffDaysFromRefresh 为负数）时跳过
+                    if (diffDaysFromRefresh < 0) {
+                        console.log(`  跳过账期 ${period.start} ~ ${period.end}：本期起在刷新日之后（未来账期，diff=${diffDaysFromRefresh}）`);
                         periodsProcessed++;
                         checkComplete();
                         return;
                     }
+
 
                     const checkSql = `SELECT id, discount_amount FROM customer_bills WHERE customer_id = ? AND period_start = ? AND period_end = ?`;
                     db.query(checkSql, [customerId, period.start, period.end], (err, existingBills) => {
@@ -13574,15 +13576,17 @@ app.post('/api/customer-billing/generate-all-bills', (req, res) => {
 
                             // 为每个账期创建或重算账单（已有账单会重算金额和状态）
                             periods.forEach(period => {
-                                // 账单生成条件：本期起日期与当前刷新日期比较，只有当本期起距今天至少10天时才生成
+                                // 账单生成条件：仅跳过未来账期，本期起在刷新日之后不生成
                                 const periodStartDate = new Date(period.start);
                                 const diffDaysFromRefresh = Math.floor((today.getTime() - periodStartDate.getTime()) / (24 * 3600 * 1000));
-                                if (diffDaysFromRefresh < 10) {
-                                    console.log(`    跳过账期 ${period.start} ~ ${period.end}：本期起距离刷新日不足10天（${diffDaysFromRefresh} 天）`);
+                                // 仅当本期起在刷新日之后（diffDaysFromRefresh 为负数）时跳过
+                                if (diffDaysFromRefresh < 0) {
+                                    console.log(`    跳过账期 ${period.start} ~ ${period.end}：本期起在刷新日之后（未来账期，diff=${diffDaysFromRefresh}）`);
                                     periodsProcessed++;
                                     checkPeriodComplete();
                                     return;
                                 }
+
 
                                 const checkSql = `SELECT id, discount_amount FROM customer_bills WHERE customer_id = ? AND period_start = ? AND period_end = ?`;
                                 db.query(checkSql, [customerId, period.start, period.end], (err, existingBills) => {

@@ -382,9 +382,10 @@
                     <td><%= productName %></td>
                     <td class="col-spec"><%= specifications %></td>
                     <td>1</td>
-                    <td><%= item.monthly_rate ? item.monthly_rate.toFixed(0) : '0' %></td>
-                    <td><%= item.daily_rate ? item.daily_rate.toFixed(1) : '0.0' %></td>
+                    <td><%= item.monthly_rate ? (Number(item.monthly_rate) || 0).toFixed(0) : '0' %></td>
+                    <td><%= item.daily_rate ? (Number(item.daily_rate) || 0).toFixed(1) : '0.0' %></td>
                     <td><%= item.start_date ? moment(item.start_date).format('YYYY-MM-DD') : '-' %></td>
+
                     <td><%= lastPeriodStart %></td>
                     <td><%= lastPeriodEnd %></td>
                     <td><%= lastPeriodDays %></td>
