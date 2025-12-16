@@ -950,6 +950,67 @@ app.post('/api/wechat/mp/bind-customer', authenticateWechatMp, (req, res) => {
     });
 });
 
+// 微信小程序：账单列表（当前微信已绑定客户）
+app.get('/api/wechat/bills', authenticateWechatMp, (req, res) => {
+    const auth = req.wechatMpAuth;
+    const customerId = auth.customerId;
+    const { status } = req.query || {};
+
+    if (!customerId) {
+        return res.json({ success: false, message: '当前微信账号未绑定客户' });
+    }
+
+    // 只查这一个客户的账单
+    let whereClause = 'cb.customer_id = ?';
+    const params = [customerId];
+
+    if (status === 'unpaid') {
+        // 未支付且账期已开始
+        whereClause += ' AND cb.status = ? AND cb.period_start <= CURDATE()';
+        params.push('unpaid');
+    }
+
+    const sql = `
+        SELECT 
+            cb.id,
+            cb.bill_number,
+            cb.period_start,
+            cb.period_end,
+            cb.amount,
+            cb.status,
+            CASE 
+                WHEN cb.status = 'unpaid' 
+                     AND cb.period_start < CURDATE() 
+                THEN DATEDIFF(CURDATE(), cb.period_start)
+                ELSE 0
+            END AS overdue_days
+        FROM customer_bills cb
+        WHERE ${whereClause}
+        ORDER BY cb.period_end DESC, cb.created_at DESC
+        LIMIT 100
+    `;
+
+    db.query(sql, params, (err, rows) => {
+        if (err) {
+            console.error('查询小程序账单列表失败:', err);
+            return res.json({ success: false, message: '查询账单失败' });
+        }
+
+        res.json({
+            success: true,
+            data: rows.map((row) => ({
+                id: row.id,
+                bill_number: row.bill_number,
+                period_start: row.period_start,
+                period_end: row.period_end,
+                amount: row.amount,
+                status: row.status,
+                overdue_days: row.overdue_days,
+            })),
+        });
+    });
+});
+
 // 微信扫码登录入口（手机端）
 app.get('/wechat/scan-login', (req, res) => {
     const loginToken = req.query.token;
