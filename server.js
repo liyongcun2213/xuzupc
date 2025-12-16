@@ -868,6 +868,74 @@ app.post('/api/wechat/mp/login', (req, res) => {
     });
 });
 
+// 微信小程序：绑定客户
+app.post('/api/wechat/mp/bind-customer', authenticateWechatMp, (req, res) => {
+    const auth = req.wechatMpAuth;
+    const { customerKeyword, mobile } = req.body || {};
+
+    if (!customerKeyword || !mobile) {
+        return res.status(400).json({ success: false, message: '请填写客户名称/编号和手机号' });
+    }
+
+    const querySql = `
+        SELECT 
+            c.id AS customer_id,
+            c.name AS customer_name,
+            ca.customer_code,
+            c.contact_person,
+            c.phone
+        FROM customers c
+        LEFT JOIN customer_accounts ca ON ca.customer_id = c.id
+        WHERE (ca.customer_code = ? OR c.name = ?)
+          AND c.phone = ?
+        LIMIT 1
+    `;
+
+    db.query(querySql, [customerKeyword, customerKeyword, mobile], (queryErr, rows) => {
+        if (queryErr) {
+            console.error('根据关键字查询客户失败:', queryErr);
+            return res.status(500).json({ success: false, message: '服务器错误' });
+        }
+
+        if (!rows || rows.length === 0) {
+            return res.status(404).json({ success: false, message: '未找到匹配的客户，请检查信息是否正确' });
+        }
+
+        const row = rows[0];
+        const customerId = row.customer_id;
+
+        const updateCustomerSql = `
+            UPDATE wechat_customers
+            SET customer_id = ?, contact_name = ?, mobile = ?
+            WHERE openid = ?
+        `;
+
+        db.query(updateCustomerSql, [customerId, row.contact_person || null, row.phone || null, auth.openid], (updateErr) => {
+            if (updateErr) {
+                console.error('更新 wechat_customers 失败:', updateErr);
+                return res.status(500).json({ success: false, message: '绑定客户失败' });
+            }
+
+            const updateSessionSql = 'UPDATE wechat_mp_sessions SET customer_id = ? WHERE token = ?';
+            db.query(updateSessionSql, [customerId, auth.token], (sessionErr) => {
+                if (sessionErr) {
+                    console.error('更新小程序会话客户信息失败:', sessionErr);
+                    return res.status(500).json({ success: false, message: '绑定客户失败' });
+                }
+
+                res.json({
+                    success: true,
+                    data: {
+                        customerId: customerId,
+                        customerName: row.customer_name,
+                        customerCode: row.customer_code || null,
+                    },
+                });
+            });
+        });
+    });
+});
+
 // 微信扫码登录入口（手机端）
 app.get('/wechat/scan-login', (req, res) => {
     const loginToken = req.query.token;
