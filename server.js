@@ -7666,7 +7666,13 @@ app.get('/devices', isAuthenticated, (req, res) => {
         FROM devices d
         LEFT JOIN products p ON d.product_id = p.id
         ${whereClause}
-        ORDER BY d.created_at DESC
+        ORDER BY
+            CASE
+                WHEN d.status = 'in_warehouse' THEN 1
+                WHEN d.status = 'available' THEN 2
+                ELSE 3
+            END,
+            d.created_at DESC
         LIMIT ? OFFSET ?
     `;
     
