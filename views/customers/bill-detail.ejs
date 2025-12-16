@@ -1,6 +1,12 @@
 <%- include('../layout') %>
 
 <style>
+    /* 屏幕版账单明细表：隐藏本期起、本期止两列 */
+    .bill-detail-table .col-period-start,
+    .bill-detail-table .col-period-end {
+        display: none;
+    }
+
     @media print {
         .no-print {
             display: none !important;
@@ -123,9 +129,11 @@
     }
 </style>
 
+
 <div class="no-print">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h5>账单详情 - <%= bill.bill_number %></h5>
+        <h5>账单详情</h5>
+
         <div>
             <a href="/customers/detail/<%= customer.id %>" class="btn btn-outline-secondary btn-sm me-2">返回客户详情</a>
             <button class="btn btn-warning btn-sm me-2" disabled>标记为已付款（待实现）</button>
@@ -188,7 +196,8 @@
 
     <div class="card mb-3">
         <div class="card-body">
-            <h5 class="text-center mb-3"><%= customer.name %> - <%= bill.bill_number %></h5>
+            <h5 class="text-center mb-3"><%= customer.name %></h5>
+
             <div class="row mb-2">
                 <div class="col-md-3">客户编号：<strong><%= account ? account.customer_code : '—' %></strong></div>
                 <div class="col-md-3">客户名称：<strong><%= customer.name %></strong></div>
@@ -206,24 +215,24 @@
     <div class="card mb-3">
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table table-bordered align-middle">
+                <table class="table table-bordered align-middle bill-detail-table">
+
                     <thead>
                         <tr>
-                            <th>订单号</th>
-                            <th>设备编号</th>
-                            <th>产品名称</th>
-                            <th>规格配置</th>
+                            <th>设备名称</th>
+                            <th>规格型号</th>
                             <th>数量</th>
                             <th>月租金</th>
                             <th>日租金</th>
                             <th>起租日期</th>
-                            <th>本期起</th>
-                            <th>本期止</th>
+                            <th class="col-period-start">本期起</th>
+                            <th class="col-period-end">本期止</th>
                             <th>月数</th>
                             <th>天数</th>
                             <th>金额</th>
                         </tr>
                     </thead>
+
                     <tbody>
                         <% if (items && items.length > 0) { %>
                             <% items.forEach(item => { 
@@ -236,19 +245,19 @@
                                     <% item.adjustment_details.forEach((segment, segIdx) => { %>
                                         <tr <% if (segIdx > 0) { %>style="border-top: 2px solid #dee2e6;"<% } %>>
                                             <% if (segIdx === 0) { %>
-                                                <td rowspan="<%= item.adjustment_details.length %>"><%= item.order_number %></td>
-                                                <td rowspan="<%= item.adjustment_details.length %>"><%= item.device_code || item.serial_number || '-' %></td>
                                                 <td rowspan="<%= item.adjustment_details.length %>"><%= productName %></td>
                                                 <td rowspan="<%= item.adjustment_details.length %>"><%= specifications %></td>
                                                 <td rowspan="<%= item.adjustment_details.length %>">1</td>
                                             <% } %>
+
                                             <td>¥<%= segment.monthlyRate %> <small class="text-muted">(<%= segment.label %>)</small></td>
                                             <td>¥<%= segment.dailyRate %></td>
                                             <% if (segIdx === 0) { %>
                                                 <td rowspan="<%= item.adjustment_details.length %>"><%= item.start_date ? moment(item.start_date).format('YYYY/MM/DD') : '-' %></td>
                                             <% } %>
-                                            <td><%= moment(segment.start).format('YYYY/MM/DD') %></td>
-                                            <td><%= moment(segment.end).format('YYYY/MM/DD') %></td>
+                                            <td class="col-period-start"><%= moment(segment.start).format('YYYY/MM/DD') %></td>
+                                            <td class="col-period-end"><%= moment(segment.end).format('YYYY/MM/DD') %></td>
+
                                             <td colspan="1">-</td>
                                             <td><%= segment.days %></td>
                                             <td>¥<%= segment.amount %></td>
@@ -256,30 +265,30 @@
                                     <% }) %>
                                     <!-- 合计行 -->
                                     <tr style="background-color: #f8f9fa; font-weight: bold;">
-                                        <td colspan="5"></td>
+                                        <td colspan="3"></td>
                                         <td colspan="2">小计</td>
                                         <td colspan="3"></td>
                                         <td>-</td>
                                         <td><%= item.days %></td>
                                         <td>¥<%= (Number(item.consumed_amount) || 0).toFixed(2) %></td>
                                     </tr>
+
                                 <% } else { %>
                                     <!-- 没有租金调整，显示单行 -->
                                     <tr>
-                                        <td><%= item.order_number %></td>
-                                        <td><%= item.device_code || item.serial_number || '-' %></td>
                                         <td><%= productName %></td>
                                         <td><%= specifications %></td>
                                         <td>1</td>
                                         <td>¥<%= item.monthly_rate ? (Number(item.monthly_rate) || 0).toFixed(2) : '0.00' %></td>
                                         <td>¥<%= item.daily_rate ? (Number(item.daily_rate) || 0).toFixed(2) : '0.00' %></td>
                                         <td><%= item.start_date ? moment(item.start_date).format('YYYY/MM/DD') : '-' %></td>
-                                        <td><%= item.period_start ? moment(item.period_start).format('YYYY/MM/DD') : moment(bill.period_start).format('YYYY/MM/DD') %></td>
-                                        <td><%= item.period_end ? moment(item.period_end).format('YYYY/MM/DD') : moment(bill.period_end).format('YYYY/MM/DD') %></td>
+                                        <td class="col-period-start"><%= item.period_start ? moment(item.period_start).format('YYYY/MM/DD') : moment(bill.period_start).format('YYYY/MM/DD') %></td>
+                                        <td class="col-period-end"><%= item.period_end ? moment(item.period_end).format('YYYY/MM/DD') : moment(bill.period_end).format('YYYY/MM/DD') %></td>
                                         <td><%= item.months || 0 %></td>
                                         <td><%= item.days || 0 %></td>
                                         <td>¥<%= (Number(item.consumed_amount) || 0).toFixed(2) %></td>
                                     </tr>
+
                                 <% } %>
                             <% }) %>
                         <% } else { %>
