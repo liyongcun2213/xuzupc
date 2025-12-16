@@ -1011,6 +1011,89 @@ app.get('/api/wechat/bills', authenticateWechatMp, (req, res) => {
     });
 });
 
+// 微信小程序：账单详情
+app.get('/api/wechat/bills/:billId', authenticateWechatMp, (req, res) => {
+    const auth = req.wechatMpAuth;
+    const customerId = auth.customerId;
+    const billId = req.params.billId;
+
+    if (!customerId) {
+        return res.json({ success: false, message: '当前微信账号未绑定客户' });
+    }
+
+    if (!billId) {
+        return res.json({ success: false, message: '缺少账单ID' });
+    }
+
+    const sql = `
+        SELECT 
+            cb.id,
+            cb.bill_number,
+            cb.customer_id,
+            c.name AS customer_name,
+            cb.period_start,
+            cb.period_end,
+            cb.bill_date,
+            cb.amount,
+            cb.status,
+            COALESCE(cb.discount_amount, 0) AS discount_amount,
+            COALESCE(r.total_received, 0) AS received_amount,
+            GREATEST(
+                cb.amount 
+                - COALESCE(r.total_received, 0) 
+                - COALESCE(cb.discount_amount, 0),
+                0
+            ) AS remaining_amount,
+            CASE 
+                WHEN cb.status = 'unpaid' 
+                     AND cb.period_start < CURDATE() 
+                THEN DATEDIFF(CURDATE(), cb.period_start)
+                ELSE 0
+            END AS overdue_days
+        FROM customer_bills cb
+        LEFT JOIN customers c ON cb.customer_id = c.id
+        LEFT JOIN (
+            SELECT bill_id, SUM(received_amount) AS total_received
+            FROM rent_received_records
+            GROUP BY bill_id
+        ) r ON r.bill_id = cb.id
+        WHERE cb.id = ? AND cb.customer_id = ?
+        LIMIT 1
+    `;
+
+    db.query(sql, [billId, customerId], (err, rows) => {
+        if (err) {
+            console.error('查询小程序账单详情失败:', err);
+            return res.json({ success: false, message: '查询账单详情失败' });
+        }
+
+        if (!rows || rows.length === 0) {
+            return res.json({ success: false, message: '账单不存在或不属于当前客户' });
+        }
+
+        const row = rows[0];
+
+        res.json({
+            success: true,
+            data: {
+                id: row.id,
+                billNumber: row.bill_number,
+                customerName: row.customer_name,
+                periodStart: row.period_start,
+                periodEnd: row.period_end,
+                billDate: row.bill_date,
+                amount: row.amount,
+                status: row.status,
+                discountAmount: row.discount_amount,
+                receivedAmount: row.received_amount,
+                remainingAmount: row.remaining_amount,
+                overdueDays: row.overdue_days,
+                items: [],
+            },
+        });
+    });
+});
+
 // 微信扫码登录入口（手机端）
 app.get('/wechat/scan-login', (req, res) => {
     const loginToken = req.query.token;
