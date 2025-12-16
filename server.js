@@ -460,6 +460,110 @@ function fetchWeChatOAuthAccessToken(code, callback) {
     req.end();
 }
 
+// 微信小程序：根据 code 换取 openid/session_key
+function fetchWeChatMpSession(code, callback) {
+    if (!WECHAT_APP_ID || !WECHAT_APP_SECRET) {
+        return callback(new Error('WECHAT_APP_ID 或 WECHAT_APP_SECRET 未配置'));
+    }
+    if (!code) {
+        return callback(new Error('缺少 code 参数'));
+    }
+
+    const mpPath = `/sns/jscode2session?appid=${WECHAT_APP_ID}&secret=${WECHAT_APP_SECRET}&js_code=${encodeURIComponent(code)}&grant_type=authorization_code`;
+
+    const options = {
+        hostname: 'api.weixin.qq.com',
+        path: mpPath,
+        method: 'GET'
+    };
+
+    const req = https.request(options, (resp) => {
+        let data = '';
+        resp.on('data', (chunk) => {
+            data += chunk;
+        });
+        resp.on('end', () => {
+            try {
+                const json = JSON.parse(data);
+                if (json.errcode) {
+                    console.error('获取小程序会话信息失败:', json);
+                    return callback(new Error(json.errmsg || '获取小程序会话信息失败'));
+                }
+                callback(null, json);
+            } catch (e) {
+                console.error('解析小程序会话响应失败:', e);
+                callback(e);
+            }
+        });
+    });
+
+    req.on('error', (err) => {
+        console.error('请求小程序会话信息出错:', err);
+        callback(err);
+    });
+
+    req.end();
+}
+
+// 生成微信小程序会话 token 并写入 wechat_mp_sessions 表
+function createWechatMpSession(openid, customerId, callback) {
+    if (!openid) {
+        return callback(new Error('缺少 openid'));
+    }
+
+    const token = crypto.randomBytes(24).toString('hex');
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 默认 7 天有效
+
+    const insertSql = `
+        INSERT INTO wechat_mp_sessions (token, openid, customer_id, expires_at)
+        VALUES (?, ?, ?, ?)
+    `;
+
+    db.query(insertSql, [token, openid, customerId || null, expiresAt], (err) => {
+        if (err) {
+            console.error('创建小程序会话失败:', err);
+            return callback(err);
+        }
+        callback(null, { token, expiresAt });
+    });
+}
+
+// 小程序接口鉴权中间件：根据 token 还原 openid/customer_id
+function authenticateWechatMp(req, res, next) {
+    const token = req.headers['x-wechat-token'] || req.query.token || (req.body && req.body.token);
+
+    if (!token) {
+        return res.status(401).json({ success: false, message: '缺少小程序会话 token' });
+    }
+
+    const sql = `
+        SELECT token, openid, customer_id, expires_at
+        FROM wechat_mp_sessions
+        WHERE token = ? AND expires_at > NOW()
+        LIMIT 1
+    `;
+
+    db.query(sql, [token], (err, results) => {
+        if (err) {
+            console.error('查询小程序会话失败:', err);
+            return res.status(500).json({ success: false, message: '服务器错误' });
+        }
+
+        if (!results || results.length === 0) {
+            return res.status(401).json({ success: false, message: '会话已失效，请重新登录' });
+        }
+
+        const session = results[0];
+        req.wechatMpAuth = {
+            token: session.token,
+            openid: session.openid,
+            customerId: session.customer_id || null,
+        };
+
+        next();
+    });
+}
+
 
 function fetchWeChatJsapiTicket(callback) {
     const now = Date.now();
@@ -701,6 +805,67 @@ app.get('/', (req, res) => {
     } else {
         res.redirect('/login');
     }
+});
+
+// 微信小程序登录：根据 code 换取 openid，并发放后端会话 token
+app.post('/api/wechat/mp/login', (req, res) => {
+    const code = (req.body && req.body.code) || null;
+
+    if (!code) {
+        return res.status(400).json({ success: false, message: '缺少 code 参数' });
+    }
+
+    fetchWeChatMpSession(code, (sessionErr, sessionData) => {
+        if (sessionErr) {
+            console.error('小程序登录换取会话失败:', sessionErr);
+            return res.status(500).json({ success: false, message: '微信会话获取失败' });
+        }
+
+        const openid = sessionData && sessionData.openid;
+        const unionid = sessionData && sessionData.unionid;
+
+        if (!openid) {
+            console.error('小程序登录未返回 openid:', sessionData);
+            return res.status(500).json({ success: false, message: '未获取到 openid' });
+        }
+
+        const upsertSql = `
+            INSERT INTO wechat_customers (openid, unionid)
+            VALUES (?, ?)
+            ON DUPLICATE KEY UPDATE unionid = VALUES(unionid)
+        `;
+
+        db.query(upsertSql, [openid, unionid || null], (upsertErr) => {
+            if (upsertErr) {
+                console.error('写入 wechat_customers 失败:', upsertErr);
+                return res.status(500).json({ success: false, message: '服务器错误' });
+            }
+
+            db.query('SELECT customer_id FROM wechat_customers WHERE openid = ? LIMIT 1', [openid], (queryErr, rows) => {
+                if (queryErr) {
+                    console.error('查询 wechat_customers 失败:', queryErr);
+                    return res.status(500).json({ success: false, message: '服务器错误' });
+                }
+
+                const boundCustomerId = rows && rows.length > 0 ? rows[0].customer_id : null;
+
+                createWechatMpSession(openid, boundCustomerId, (sessionCreateErr, sessionInfo) => {
+                    if (sessionCreateErr) {
+                        return res.status(500).json({ success: false, message: '创建会话失败' });
+                    }
+
+                    res.json({
+                        success: true,
+                        data: {
+                            token: sessionInfo.token,
+                            expiresAt: sessionInfo.expiresAt,
+                            hasBoundCustomer: !!boundCustomerId
+                        }
+                    });
+                });
+            });
+        });
+    });
 });
 
 // 微信扫码登录入口（手机端）
